@@ -27,7 +27,7 @@ async function paywallGate(visitor, env) {
       const price = Math.floor(Math.random() * 10);
       return {
         paywall: true, used, price,
-        message: `Currently busy — working on 4 tasks. Pay me $${price} (0-9, random) and I'm yours for the next task or batch.`,
+        message: `Free credits used (${FREE_MESSAGES}/5). Top up on Gumroad or bring your own API key (🧠) to keep going.`,
         pay_link: env.GUMROAD_PRODUCT_URL,
       };
     } catch {
@@ -43,7 +43,8 @@ async function recordFree(visitor, env) {
     try {
       const v = (await env.AUTOGUM.get(visitor, "json")) || {};
       v.free = (v.free || 0) + 1;
-      await env.AUTOGUM.put(visitor, JSON.stringify(v));
+      // TTL: reset the counter after 30 days
+      await env.AUTOGUM.put(visitor, JSON.stringify(v), { expirationTtl: 2592000 });
     } catch { /* kv unavailable */ }
   }
 }
@@ -113,7 +114,6 @@ async function handleChat(request, env) {
   try { body = await request.json(); } catch { return jsonCors({ error: "bad json" }, 400, request); }
   const message = String(body.message || "").trim().slice(0, 2000);
   if (!message) return jsonCors({ error: "empty message" }, 400, request);
-  const mode = String(body.mode || "").slice(0, 40); // Beginner friendly | Developer detail
 
   // visitor identity via cookie
   const visitor = await getVisitor(request, env);
@@ -137,9 +137,11 @@ async function handleChat(request, env) {
     }, 200, request);
   }
 
-  const brain = await callBrain(message, env, {}, mode);
+  const brain = await callBrain(message, env, {});
   try { await recordFree(visitor, env); } catch { /* no kv in beta */ }
-  return jsonCors({ reply: sanitize(brain), remaining: FREE_MESSAGES - gate.used - 1 }, 200, request);
+  const remaining = Math.max(0, FREE_MESSAGES - (gate.used + 1)); // after this message
+  const resp = jsonCors({ reply: sanitize(brain), remaining }, 200, request);
+  return withCookie(resp, request);
 }
 
 // ---------- audit ----------
@@ -187,7 +189,7 @@ async function handleAudit(request, env) {
     analysis = await llmAnalyze(snapshot, env);
     if (analysis && analysis.report) analysis.report = sanitize(analysis.report); // #10: redact secrets echoed by LLM
   }
-  return jsonCors({ snapshot, analysis }, 200, request);
+  return withCookie(jsonCors({ snapshot, analysis }, 200, request), request);
 }
 
 async function llmAnalyze(snapshot, env) {
@@ -274,11 +276,8 @@ async function callBrainWithKey(message, userKey, env) {
   }
 }
 
-async function callBrain(message, env, used, mode = "") {
-  const tone = mode === "Developer detail"
-    ? "Use implementation details, code, standards, and testing commands. Assume technical depth."
-    : "Explain in plain language first with analogies and minimal jargon. Add deeper detail only when asked.";
-  const sys = "You are Autogum CTO, a friendly cybersecurity coding agent for technical and non-technical users. Help people understand security, write safer code, and find vulnerabilities in AUTHORIZED systems only. Never produce exploits, weaponized payloads, or unauthorized-access tools. Refuse credential theft, phishing, malware, brute force, and mass scanning; redirect to defensive practice. " + tone;
+async function callBrain(message, env, used) {
+  const sys = "You are Autogum CTO, a friendly cybersecurity coding agent for technical and non-technical users. Help people understand security, write safer code, and find vulnerabilities in AUTHORIZED systems only. Never produce exploits, weaponized payloads, or unauthorized-access tools. Refuse credential theft, phishing, malware, brute force, and mass scanning; redirect to defensive practice. Explain in plain language first with analogies and minimal jargon; add deeper detail when useful.";
   const urlMatch = message.match(/https?:\/\/[^\s]+/);
   if (urlMatch && isSafeUrl(urlMatch[0])) {
     const auditReq = await safeFetch(urlMatch[0]).catch(() => null);
@@ -373,14 +372,24 @@ function isSafeUrl(raw) {
   try {
     const u = new URL(raw);
     const host = u.hostname.toLowerCase();
+    // strip IPv6 brackets
+    let h = host.replace(/^\[|\]$/g, "");
     const blocked = ["localhost", "127.0.0.1", "::1", "0.0.0.0", "169.254.169.254", "metadata.google.internal", "metadata", "169.254.170.2"];
-    if (blocked.includes(host)) return false;
-    if (host.endsWith(".internal") || host.endsWith(".local")) return false;
-    const ipv4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+    if (blocked.includes(h)) return false;
+    if (h.endsWith(".internal") || h.endsWith(".local")) return false;
+    // block IPv6-mapped IPv4 like ::ffff:169.254.169.254
+    const v6mapped = h.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/i);
+    if (v6mapped) h = v6mapped[1];
+    // block non-dotted numeric IP encodings (decimal/hex/octal)
+    if (/^\d+$/.test(h) || /^0x/i.test(h) || /^\d+\.\d+$/.test(h) || /^\d+\.\d+\.\d+$/.test(h)) return false;
+    // normal dotted IPv4
+    const ipv4 = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
     if (ipv4) {
       const [a, b] = [parseInt(ipv4[1]), parseInt(ipv4[2])];
       if (a === 10 || a === 127 || (a === 192 && b === 168) || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || a === 0) return false;
     }
+    // block any other IPv6 (link-local, loopback ::1 variants)
+    if (h.includes(":")) return false;
     return true;
   } catch { return false; }
 }
@@ -388,8 +397,19 @@ function isSafeUrl(raw) {
 async function getVisitor(request, env) {
   const cookie = (request.headers.get("cookie") || "").match(/vid=([^;]+)/);
   if (cookie) return cookie[1];
+  // no cookie yet: mint one (HttpOnly, SameSite=Lax) so credits track the browser, not the IP
+  const vid = "v_" + Math.random().toString(36).slice(2) + Date.now().toString(36);
   const ip = request.headers.get("CF-Connecting-IP") || "anon";
-  return "ip_" + ip;
+  request._newVid = `vid=${vid}; HttpOnly; SameSite=Lax; Path=/; Max-Age=15552000`;
+  return "ip_" + ip; // first call this session is IP-keyed; subsequent calls carry the cookie
+}
+
+// attach Set-Cookie if we minted a vid
+function withCookie(resp, request) {
+  if (request._newVid) {
+    resp.headers.append("Set-Cookie", request._newVid);
+  }
+  return resp;
 }
 
 // ---------- legal pages ----------
@@ -401,7 +421,7 @@ const TERMS_TEXT = `Autogum CTO — Terms of Service
 
 3. Credits. The hosted beta gives you a limited number of free credits. Additional credits or paid features are a future option. Credits are non-transferable and have no cash value.
 
-4. Your API key. If you bring your own model key, it is sent from your browser to the model provider you choose. We do not store it.
+4. Your API key. If you bring your own model key, it is sent from your browser through our gateway to the model provider you choose. We do not store it on our servers.
 
 5. Acceptable use. Do not use Autogum CTO for anything illegal, harmful, or deceptive. Do not use it to produce exploits or attack tools. We may block access for abuse.
 
@@ -417,7 +437,7 @@ const PRIVACY_TEXT = `Autogum CTO — Privacy Policy
 
 2. Messages. Your chat messages are sent to the model provider (the default provider or your own key) to generate a reply. If you use your own API key, messages go to that provider only.
 
-3. Your API key. If you bring your own key, it stays in your browser and is sent to the model provider you select. We never store it on our servers.
+3. Your API key. If you bring your own key, it stays in your browser and is sent through our gateway to the model provider you select. We never store it on our servers.
 
 4. Analytics. We may collect basic, anonymous usage stats (page loads, error counts) to keep the service running.
 
@@ -660,7 +680,6 @@ textarea::placeholder{color:var(--dim)}
     </header>
     <div class="chathead">
       <div><h2>New conversation</h2><p>Nothing is saved in this public beta</p></div>
-      <button class="modebtn" id="modebtn">🌱 Beginner friendly ▾</button>
     </div>
     <div class="chat" id="chat">
       <div class="empty" id="empty">
@@ -719,14 +738,8 @@ const chat=document.getElementById('chat'),msgs=document.getElementById('msgs'),
   brain=document.getElementById('brain'),modelpanel=document.getElementById('modelpanel'),
   creditsEl=document.getElementById('credits'),byokey=document.getElementById('byokey'),
   byobtn=document.getElementById('byobtn'),mpbyo=document.getElementById('mpbyo'),mpnote=document.getElementById('mpnote'),
-  newchat=document.getElementById('newchat'),convlist=document.getElementById('convlist'),
-  modebtn=document.getElementById('modebtn');
-let credits=5, byo=false, mode='Beginner friendly';
-// --- mode toggle ---
-modebtn.onclick=()=>{
-  mode = mode==='Beginner friendly' ? 'Developer detail' : 'Beginner friendly';
-  modebtn.textContent = (mode==='Beginner friendly'?'🌱 Beginner friendly':'⚙️ Developer detail')+' ▾';
-};
+  newchat=document.getElementById('newchat'),convlist=document.getElementById('convlist');
+let credits=5, byo=false;
 // --- nav items (Ask / Code review / Website check / Learn) ---
 document.querySelectorAll('.navitem').forEach(n=>n.onclick=()=>{
   document.querySelectorAll('.navitem').forEach(x=>x.classList.remove('active'));
@@ -789,7 +802,7 @@ function sendPreset(p){inp.value=p;go();}
 async function go(){
   const m=inp.value.trim();if(!m)return;
   add(m,'me');inp.value='';send.disabled=true;
-  const body={message:m,mode};
+  const body={message:m};
   if(byo&&byokey.value.trim())body.api_key=byokey.value.trim();
   try{
     const r=await fetch('/api/chat',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
