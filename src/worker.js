@@ -399,7 +399,10 @@ body{background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSys
 .wrap{max-width:760px;margin:0 auto;padding:24px 20px 40px}
 .credits{display:flex;align-items:center;justify-content:space-between;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--dim)}
 .credits b{color:var(--accent)}
-.chat{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:12px;min-height:320px;max-height:55vh;overflow-y:auto}
+.chat{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:12px;min-height:320px;max-height:55vh;overflow-y:auto;position:relative}
+.chat .emptyhint{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--dim);font-size:14px;pointer-events:none}
+.foot a{color:var(--accent);text-decoration:none}
+.foot a:hover{text-decoration:underline}
 .msg{max-width:82%;padding:10px 14px;border-radius:12px;font-size:14.5px;line-height:1.55;white-space:pre-wrap}
 .me{align-self:flex-end;background:var(--me-bg);color:var(--me-txt)}
 .bot{align-self:flex-start;background:var(--bot-bg);color:var(--txt);border:1px solid var(--border)}
@@ -421,8 +424,8 @@ button:disabled{opacity:.5;cursor:default}
   <button class="toggle" id="toggle" title="Toggle theme">🌙</button>
 </div>
 <div class="wrap">
-  <div class="credits"><span>💳 Free credits: <b id="credits">1</b> left</span><span id="modemode">our model</span></div>
-  <div class="chat" id="chat"></div>
+  <div class="credits"><span>💳 Free credits: <b id="credits">5</b> left</span><span id="modemode">our model</span></div>
+  <div class="chat" id="chat"><div class="emptyhint" id="emptyhint">Ask anything — paste a link to audit, or describe a task</div></div>
   <div class="inputrow">
     <input id="inp" placeholder="Paste a link or describe a task…" autocomplete="off">
     <button id="send">Send</button>
@@ -435,7 +438,7 @@ button:disabled{opacity:.5;cursor:default}
       <button id="byobtn" style="background:var(--accent2)">Use my key</button>
     </div>
   </details>
-  <div class="foot">Open source · MIT licensed · beta 1.0 · ghost in the wires</div>
+  <div class="foot">Open source · MIT licensed · beta 1.0 · ghost in the wires · <a href="https://x.com/autogumcto" target="_blank" rel="noopener">X</a> · <a href="https://www.moltbook.com/u/autogum-cto" target="_blank" rel="noopener">Moltbook</a> · <a href="https://github.com/vivek29621/autogum-cto" target="_blank" rel="noopener">GitHub</a></div>
 </div>
 <script>
 const chat=document.getElementById('chat'),inp=document.getElementById('inp'),send=document.getElementById('send'),
@@ -447,6 +450,7 @@ if(saved==='dark')document.documentElement.setAttribute('data-theme','dark'),tog
 toggle.onclick=()=>{const d=document.documentElement;const dark=d.getAttribute('data-theme')==='dark';d.setAttribute('data-theme',dark?'':'dark');localStorage.setItem('theme',dark?'':'dark');toggle.textContent=dark?'🌙':'☀️'};
 byobtn.onclick=()=>{const k=byokey.value.trim();if(!k)return;byo=true;document.getElementById('modemode').textContent='your model (BYO)';add('Using your API key for this session.','bot')};
 function add(text,who,paywall){
+  const h=document.getElementById('emptyhint');if(h)h.remove();
   const d=document.createElement('div');d.className='msg '+who+(paywall?' paywall':'');d.textContent=text;chat.appendChild(d);chat.scrollTop=chat.scrollHeight;
 }
 async function go(){
@@ -469,7 +473,7 @@ async function go(){
   send.disabled=false;
 }
 send.onclick=go;inp.onkeydown=e=>{if(e.key==='Enter')go()};
-add("Hi, I'm Autogum CTO 🦞 — the agent that grows with you. Beta 1.0: 5 free messages, then bring your own API key for unlimited use. Paste a link and I'll audit it, or describe a task and I'll fix it.","bot");
+// no auto welcome — chat starts empty; first message from the bot comes only after the user sends something
 </script>
 </body>
 </html>`;
