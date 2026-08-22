@@ -9,8 +9,11 @@ id = "11f3b6ffcef641d78e46a74d92a77b3b"
 
 # Variables
 [vars]
-AGENT_API_URL = ""
-AGENT_API_KEY = ""
 GUMROAD_PRODUCT_URL = ""
+
+# Secrets (set with `wrangler secret put <name>`):
+#   CONCENTRATE_API_KEY — LLM provider key (api.concentrate.ai)
+#   AGENT_API_TOKEN     — Bearer token required for /api/agent + /api/audit
+#   PAYWALL_MODE        — set to "real" on the hosted instance to enable credits
 
 # Production: attach custom domain later (autogum-cto.com)

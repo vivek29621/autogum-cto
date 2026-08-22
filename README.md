@@ -55,17 +55,19 @@ npm run dev    # wrangler dev — worker + UI at localhost:8787
 
 **Browser:** open the worker URL → chat UI works in any modern browser.
 
-**CLI / agents / curl** (plain-text replies, no HTML):
+**CLI / agents / curl** (plain-text replies, no HTML). If you set an `AGENT_API_TOKEN` secret on your deploy, include it:
 
 ```bash
 # ask anything
 curl -X POST https://YOUR-WORKER.workers.dev/api/agent \
   -H "content-type: application/json" \
+  -H "Authorization: Bearer YOUR_AGENT_API_TOKEN" \
   -d '{"message":"check my site https://example.com"}'
 
 # audit a link directly
 curl -X POST https://YOUR-WORKER.workers.dev/api/audit \
   -H "content-type: application/json" \
+  -H "Authorization: Bearer YOUR_AGENT_API_TOKEN" \
   -d '{"url":"https://example.com"}'
 ```
 

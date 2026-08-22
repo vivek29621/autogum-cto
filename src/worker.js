@@ -286,7 +286,7 @@ async function callBrain(message, env, used) {
       const snapshot = { url: urlMatch[0], status: auditReq.status, body_head: body.slice(0, 2000) };
       if (env.CONCENTRATE_API_KEY) {
         const analysis = await llmAnalyze(snapshot, env);
-        if (analysis && analysis.report) return "🔍 Audit of " + urlMatch[0] + ":\n\n" + analysis.report;
+        if (analysis && analysis.report) return "🔍 Audit of " + urlMatch[0] + ":\n\n" + sanitize(analysis.report);
       }
     }
   }
@@ -810,7 +810,17 @@ async function go(){
     if(d.paywall){
       add(d.message,'bot',true);
       paybox.style.display='block';
-      paybox.innerHTML='<b>Credits used.</b> '+(d.pay_link?'<a href="'+d.pay_link+'" target="_blank">Pay $'+d.price+' on Gumroad</a>':'Hosted top-up coming in a later beta.')+' — or use your own key above to continue.';
+      // build with DOM APIs — no innerHTML injection
+      paybox.textContent='';
+      const b=document.createElement('b');b.textContent='Credits used. ';
+      paybox.appendChild(b);
+      if(d.pay_link){
+        const a=document.createElement('a');a.href=d.pay_link;a.target='_blank';a.textContent='Top up on Gumroad';
+        paybox.appendChild(a);
+      }else{
+        paybox.appendChild(document.createTextNode('Hosted top-up coming in a later beta.'));
+      }
+      paybox.appendChild(document.createTextNode(' — or bring your own API key (🧠) to keep going.'));
       saveMsg(m,d.message||'',true);
       send.disabled=false;return;
     }
@@ -827,7 +837,7 @@ function saveMsg(userText, botText, paywall){
 }
 send.onclick=go;
 inp.onkeydown=e=>{
-  if(e.key==='Enter'&&!e.shiftKey&&!e.nativeEvent.isComposing&&e.keyCode!==229){e.preventDefault();go();}
+  if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing&&e.keyCode!==229){e.preventDefault();go();}
 };
 // no auto welcome — chat starts empty; first message from the bot comes only after the user sends something
 </script>
