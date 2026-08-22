@@ -12,7 +12,7 @@
 
 import { paywallGate, recordFree, recordPaid } from "../private/paywall.js";
 
-const FREE_MESSAGES = 1; // beta: 1 free message per visitor (cookie-tracked)
+const FREE_MESSAGES = 5; // beta: 5 free messages per visitor (cookie-tracked)
 
 export default {
   async fetch(request, env, ctx) {
@@ -367,7 +367,7 @@ button:disabled{opacity:.5;cursor:default}
 const chat=document.getElementById('chat'),inp=document.getElementById('inp'),send=document.getElementById('send'),
   paybox=document.getElementById('paybox'),toggle=document.getElementById('toggle'),
   creditsEl=document.getElementById('credits'),byokey=document.getElementById('byokey'),byobtn=document.getElementById('byobtn');
-let credits=1, byo=false;
+let credits=5, byo=false;
 const saved=localStorage.getItem('theme');
 if(saved==='dark')document.documentElement.setAttribute('data-theme','dark'),toggle.textContent='☀️';
 toggle.onclick=()=>{const d=document.documentElement;const dark=d.getAttribute('data-theme')==='dark';d.setAttribute('data-theme',dark?'':'dark');localStorage.setItem('theme',dark?'':'dark');toggle.textContent=dark?'🌙':'☀️'};
@@ -395,7 +395,7 @@ async function go(){
   send.disabled=false;
 }
 send.onclick=go;inp.onkeydown=e=>{if(e.key==='Enter')go()};
-add("Hi, I'm Autogum CTO 🦞 — beta 1.0. Paste a link and I'll audit it, or describe a task and I'll fix it. You have 1 free message; bring your own API key for unlimited use.","bot");
+add("Hi, I'm Autogum CTO 🦞 — the agent that grows with you. Beta 1.0: 5 free messages, then bring your own API key for unlimited use. Paste a link and I'll audit it, or describe a task and I'll fix it.","bot");
 </script>
 </body>
 </html>`;
