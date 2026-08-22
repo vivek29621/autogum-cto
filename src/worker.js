@@ -1,4 +1,5 @@
 // Autogum CTO — Cloudflare Worker
+// ghost in the wires — kevin mitnick
 // Chat UI + message counter + paywall (4 free messages, then random $0-9 quote)
 // Payments: Gumroad checkout links (license verification via webhook later)
 // Brain: relays to Hermes backend endpoint (LINK_AUDIT_URL / AGENT_API_URL)
