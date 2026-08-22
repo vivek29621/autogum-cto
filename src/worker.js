@@ -281,41 +281,60 @@ const UI_HTML = `<!DOCTYPE html>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Autogum CTO</title>
 <style>
-:root{--bg:#0b0d12;--panel:#12151d;--panel2:#171b26;--line:#232a3a;--txt:#e8ecf4;--dim:#8b94a7;--green:#34d399;--amber:#fbbf24;--blue:#60a5fa;--red:#f87171}
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
-.card{width:min(560px,100%);background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:26px}
-h1{font-size:22px;display:flex;align-items:center;gap:10px}
-h1 .dot{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#60a5fa,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:18px}
-.sub{color:var(--dim);font-size:13px;margin:8px 0 18px}
-.chat{background:var(--panel2);border:1px solid var(--line);border-radius:12px;height:320px;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
-.msg{max-width:85%;padding:9px 12px;border-radius:10px;font-size:14px;line-height:1.45;white-space:pre-wrap}
-.me{align-self:flex-end;background:var(--blue);color:#04121f}
-.bot{align-self:flex-start;background:#1e293b;color:var(--txt)}
-.bot.paywall{border:1px solid var(--amber)}
-.used{color:var(--dim);font-size:11px;margin-top:8px}
-.inputrow{display:flex;gap:8px;margin-top:12px}
-input{flex:1;background:var(--panel2);border:1px solid var(--line);border-radius:9px;color:var(--txt);padding:11px 12px;font-size:14px;outline:none}
-input:focus{border-color:var(--blue)}
-button{padding:11px 18px;border:none;border-radius:9px;background:var(--blue);color:#04121f;font-weight:700;cursor:pointer}
+:root{
+  --bg:#ffffff;--panel:#f7f7f8;--panel2:#ffffff;--border:#e5e7eb;
+  --txt:#18181b;--dim:#71717a;--accent:#6366f1;--accent2:#8b5cf6;
+  --bot-bg:#f4f4f5;--me-bg:#6366f1;--me-txt:#ffffff;
+}
+[data-theme="dark"]{
+  --bg:#0b0d12;--panel:#12151d;--panel2:#171b26;--border:#232a3a;
+  --txt:#e8ecf4;--dim:#8b94a7;--accent:#60a5fa;--accent2:#8b5cf6;
+  --bot-bg:#1e293b;--me-bg:#60a5fa;--me-txt:#04121f;
+}
+body{background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;min-height:100vh;transition:background .2s,color .2s}
+.topbar{max-width:760px;margin:0 auto;padding:20px 20px 0;display:flex;align-items:center;justify-content:space-between}
+.brand{display:flex;align-items:center;gap:10px;font-size:17px;font-weight:700}
+.brand .logo{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:15px}
+.toggle{background:none;border:1px solid var(--border);border-radius:10px;width:38px;height:38px;cursor:pointer;font-size:17px;display:flex;align-items:center;justify-content:center;color:var(--txt)}
+.toggle:hover{border-color:var(--accent)}
+.wrap{max-width:760px;margin:0 auto;padding:24px 20px 40px}
+.chat{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:12px;min-height:340px;max-height:60vh;overflow-y:auto}
+.msg{max-width:82%;padding:10px 14px;border-radius:12px;font-size:14.5px;line-height:1.55;white-space:pre-wrap}
+.me{align-self:flex-end;background:var(--me-bg);color:var(--me-txt)}
+.bot{align-self:flex-start;background:var(--bot-bg);color:var(--txt);border:1px solid var(--border)}
+.bot.paywall{border-color:#f59e0b}
+.inputrow{display:flex;gap:8px;margin-top:14px}
+input{flex:1;background:var(--panel2);border:1px solid var(--border);border-radius:12px;color:var(--txt);padding:12px 14px;font-size:14.5px;outline:none;transition:border .15s}
+input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(99,102,241,.12)}
+button{padding:12px 22px;border:none;border-radius:12px;background:var(--accent);color:#fff;font-weight:600;font-size:14.5px;cursor:pointer;transition:opacity .15s}
+button:hover{opacity:.9}
 button:disabled{opacity:.5;cursor:default}
-.paybox{background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.3);border-radius:10px;padding:12px;margin-top:10px;font-size:13px}
-.paybox a{color:var(--amber);font-weight:700}
+.foot{text-align:center;font-size:12px;color:var(--dim);margin-top:18px}
+.paybox{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);border-radius:12px;padding:12px;margin-top:12px;font-size:13px}
+.paybox a{color:#f59e0b;font-weight:700}
 </style>
 </head>
 <body>
-<div class="card">
-  <h1><span class="dot">🦞</span> Autogum CTO</h1>
-  <div class="sub">Open source · MIT licensed. Autonomous self-improving AI agent. Paste a link, I'll audit it; describe a task, I'll fix it.</div>
+<div class="topbar">
+  <div class="brand"><span class="logo">🦞</span> Autogum CTO</div>
+  <button class="toggle" id="toggle" title="Toggle theme" aria-label="Toggle light/dark mode">🌙</button>
+</div>
+<div class="wrap">
   <div class="chat" id="chat"></div>
   <div class="inputrow">
     <input id="inp" placeholder="Paste a link or describe a task…" autocomplete="off">
     <button id="send">Send</button>
   </div>
   <div class="paybox" id="paybox" style="display:none"></div>
+  <div class="foot">Open source · MIT licensed · autonomous self-improving AI agent</div>
 </div>
 <script>
-const chat=document.getElementById('chat'),inp=document.getElementById('inp'),send=document.getElementById('send'),paybox=document.getElementById('paybox');
+const chat=document.getElementById('chat'),inp=document.getElementById('inp'),send=document.getElementById('send'),paybox=document.getElementById('paybox'),toggle=document.getElementById('toggle');
+// theme
+const saved=localStorage.getItem('theme');
+if(saved==='dark')document.documentElement.setAttribute('data-theme','dark'),toggle.textContent='☀️';
+toggle.onclick=()=>{const d=document.documentElement;const dark=d.getAttribute('data-theme')==='dark';d.setAttribute('data-theme',dark?'':'dark');localStorage.setItem('theme',dark?'':'dark');toggle.textContent=dark?'🌙':'☀️'};
 function add(text,who,paywall){
   const d=document.createElement('div');d.className='msg '+who+(paywall?' paywall':'');d.textContent=text;chat.appendChild(d);chat.scrollTop=chat.scrollHeight;
 }
