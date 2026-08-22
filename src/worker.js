@@ -412,6 +412,17 @@ input{flex:1;background:var(--panel2);border:1px solid var(--border);border-radi
 input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(99,102,241,.12)}
 button{padding:12px 22px;border:none;border-radius:12px;background:var(--accent);color:#fff;font-weight:600;font-size:14.5px;cursor:pointer}
 button:disabled{opacity:.5;cursor:default}
+.brainbtn{width:46px;padding:0;background:var(--panel2);border:1px solid var(--border);font-size:18px;border-radius:12px}
+.brainbtn:hover{border-color:var(--accent)}
+.modelpanel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px;margin-top:10px;font-size:13px}
+.mp-title{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);font-weight:600;margin-bottom:10px}
+.mp-opt{display:block;padding:8px 10px;border-radius:9px;cursor:pointer}
+.mp-opt:hover{background:var(--panel2)}
+.mp-opt b{color:var(--txt)}
+.mp-opt span{color:var(--accent);font-weight:600}
+.mp-byo{display:flex;gap:8px;margin-top:8px;padding-left:24px}
+.mp-byo input{flex:1}
+.mp-note{color:var(--dim);font-size:12px;margin-top:8px;padding-left:24px}
 .foot{text-align:center;font-size:12px;color:var(--dim);margin-top:18px}
 .paybox{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);border-radius:12px;padding:12px;margin-top:12px;font-size:13px}
 .details{font-size:12px;color:var(--dim);margin-top:10px;line-height:1.6}
@@ -424,31 +435,43 @@ button:disabled{opacity:.5;cursor:default}
   <button class="toggle" id="toggle" title="Toggle theme">🌙</button>
 </div>
 <div class="wrap">
-  <div class="credits"><span>💳 Free credits: <b id="credits">5</b> left</span><span id="modemode">our model</span></div>
   <div class="chat" id="chat"><div class="emptyhint" id="emptyhint">Ask anything — paste a link to audit, or describe a task</div></div>
   <div class="inputrow">
     <input id="inp" placeholder="Paste a link or describe a task…" autocomplete="off">
+    <button class="brainbtn" id="brain" title="Model / credits">🧠</button>
     <button id="send">Send</button>
   </div>
-  <div class="paybox" id="paybox" style="display:none"></div>
-  <details class="details"><summary>Bring your own model (beta)</summary>
-    Paste an OpenAI-compatible API key below to use your own model — unlimited, your credits aren't spent.
-    <div class="inputrow" style="margin-top:8px">
-      <input id="byokey" placeholder="sk-… (your API key, stays in this browser)" autocomplete="off">
-      <button id="byobtn" style="background:var(--accent2)">Use my key</button>
+  <div class="modelpanel" id="modelpanel" style="display:none">
+    <div class="mp-title">Model</div>
+    <label class="mp-opt"><input type="radio" name="model" value="me" checked> <b>Autogum CTO</b> — default · <span id="credits">5</span> free credits</label>
+    <label class="mp-opt"><input type="radio" name="model" value="byo"> <b>Your own model</b> — use your API key</label>
+    <div class="mp-byo" id="mpbyo" style="display:none">
+      <input id="byokey" placeholder="sk-… your OpenAI-compatible API key" autocomplete="off">
+      <button id="byobtn">Use my key</button>
     </div>
-  </details>
-  <div class="foot">Open source · MIT licensed · beta 1.0 · ghost in the wires · <a href="https://x.com/autogumcto" target="_blank" rel="noopener">X</a> · <a href="https://www.moltbook.com/u/autogum-cto" target="_blank" rel="noopener">Moltbook</a> · <a href="https://github.com/vivek29621/autogum-cto" target="_blank" rel="noopener">GitHub</a></div>
+    <div class="mp-note" id="mpnote"></div>
+  </div>
+  <div class="paybox" id="paybox" style="display:none"></div>
+  <details class="details"><summary>About</summary>Beta 1.0 · open source · MIT · <a href="https://x.com/autogumcto" target="_blank" rel="noopener">X</a> · <a href="https://www.moltbook.com/u/autogum-cto" target="_blank" rel="noopener">Moltbook</a> · <a href="https://github.com/vivek29621/autogum-cto" target="_blank" rel="noopener">GitHub</a></details>
+  <div class="foot">Open source · MIT licensed · beta 1.0 · ghost in the wires</div>
 </div>
 <script>
 const chat=document.getElementById('chat'),inp=document.getElementById('inp'),send=document.getElementById('send'),
   paybox=document.getElementById('paybox'),toggle=document.getElementById('toggle'),
-  creditsEl=document.getElementById('credits'),byokey=document.getElementById('byokey'),byobtn=document.getElementById('byobtn');
+  brain=document.getElementById('brain'),modelpanel=document.getElementById('modelpanel'),
+  creditsEl=document.getElementById('credits'),byokey=document.getElementById('byokey'),
+  byobtn=document.getElementById('byobtn'),mpbyo=document.getElementById('mpbyo'),mpnote=document.getElementById('mpnote');
 let credits=5, byo=false;
+// brain toggle: show model panel (5 credits visible there)
+brain.onclick=()=>{modelpanel.style.display=modelpanel.style.display==='none'?'block':'none'};
+document.querySelectorAll('input[name="model"]').forEach(r=>r.onchange=()=>{
+  if(r.value==='byo'){byo=true;mpbyo.style.display='flex';mpnote.textContent='Your key, your cost — unlimited.';}
+  else{byo=false;mpbyo.style.display='none';mpnote.textContent='Using Autogum CTO — '+credits+' free credits left.';}
+});
+byobtn.onclick=()=>{const k=byokey.value.trim();if(!k)return;mpnote.textContent='Using your API key for this session.';modelpanel.style.display='none'};
 const saved=localStorage.getItem('theme');
 if(saved==='dark')document.documentElement.setAttribute('data-theme','dark'),toggle.textContent='☀️';
 toggle.onclick=()=>{const d=document.documentElement;const dark=d.getAttribute('data-theme')==='dark';d.setAttribute('data-theme',dark?'':'dark');localStorage.setItem('theme',dark?'':'dark');toggle.textContent=dark?'🌙':'☀️'};
-byobtn.onclick=()=>{const k=byokey.value.trim();if(!k)return;byo=true;document.getElementById('modemode').textContent='your model (BYO)';add('Using your API key for this session.','bot')};
 function add(text,who,paywall){
   const h=document.getElementById('emptyhint');if(h)h.remove();
   const d=document.createElement('div');d.className='msg '+who+(paywall?' paywall':'');d.textContent=text;chat.appendChild(d);chat.scrollTop=chat.scrollHeight;
