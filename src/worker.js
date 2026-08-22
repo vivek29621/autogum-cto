@@ -414,7 +414,7 @@ h1 .grad{background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-
 <section class="hero">
   <span class="badge">Open Source · MIT License · Beta 1.0</span>
   <h1>The agent that<br><span class="grad">grows with you</span></h1>
-  <p class="lead">Autonomous, self-improving AI agent. Paste a link, get a security audit. Describe a task, get it fixed. 5 free credits, then bring your own model.</p>
+  <p class="lead">An autonomous, self-improving AI <b>agent</b> — not just a model. Paste a link, get a security audit. Describe a task, get it fixed. 5 free credits, then bring your own model.</p>
   <div class="cta-row">
     <a class="btn btn-primary btn-lg" href="/chat">🚀 Try free — 5 credits</a>
     <a class="btn btn-ghost btn-lg" href="https://github.com/vivek29621/autogum-cto" target="_blank" rel="noopener">⭐ View on GitHub</a>
@@ -457,7 +457,22 @@ const UI_HTML = `<!DOCTYPE html>
   --bot-bg:#1e293b;--me-bg:#60a5fa;--me-txt:#04121f;
 }
 body{background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;min-height:100vh;transition:background .2s,color .2s}
-.topbar{max-width:760px;margin:0 auto;padding:20px 20px 0;display:flex;align-items:center;justify-content:space-between}
+.app{display:flex;min-height:100vh}
+.sidebar{width:240px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:14px;position:sticky;top:0;height:100vh;overflow-y:auto}
+.sidebar.collapsed{display:none}
+.newchat{width:100%;padding:10px;border:1px solid var(--border);border-radius:10px;background:var(--panel2);color:var(--txt);font-size:13px;font-weight:600;cursor:pointer;margin-bottom:12px}
+.newchat:hover{border-color:var(--accent)}
+.convlist{flex:1;display:flex;flex-direction:column;gap:4px;overflow-y:auto}
+.conv{font-size:12.5px;color:var(--dim);padding:8px 10px;border-radius:8px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.conv:hover{background:var(--panel2);color:var(--txt)}
+.conv.active{background:var(--panel2);color:var(--txt);border:1px solid var(--border)}
+.sidefoot{font-size:12px;color:var(--dim);line-height:1.9;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
+.sidefoot a{color:var(--dim);text-decoration:none}
+.sidefoot a:hover{color:var(--accent)}
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.hamburger{background:none;border:1px solid var(--border);border-radius:10px;width:38px;height:38px;cursor:pointer;font-size:16px;color:var(--txt)}
+@media(max-width:640px){.sidebar{width:200px}}
+.topbar{max-width:760px;margin:0 auto;padding:20px 20px 0;display:flex;align-items:center;justify-content:space-between;gap:12px}
 .brand{display:flex;align-items:center;gap:10px;font-size:17px;font-weight:700}
 .brand .logo{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:15px}
 .badge{font-size:11px;font-weight:600;color:var(--accent);border:1px solid var(--accent);border-radius:999px;padding:2px 8px}
@@ -496,10 +511,18 @@ button:disabled{opacity:.5;cursor:default}
 </style>
 </head>
 <body>
-<div class="topbar">
-  <div class="brand"><span class="logo">🦞</span> Autogum CTO <span class="badge">Beta 1.0</span></div>
-  <button class="toggle" id="toggle" title="Toggle theme">🌙</button>
-</div>
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <button class="newchat" id="newchat">✚ New chat</button>
+    <div class="convlist" id="convlist"></div>
+    <div class="sidefoot"><a href="/">🏠 Home</a><br><a href="https://github.com/vivek29621/autogum-cto" target="_blank" rel="noopener">⭐ GitHub</a><br><a href="/terms">Terms</a> · <a href="/privacy">Privacy</a></div>
+  </aside>
+  <div class="main">
+  <div class="topbar">
+    <button class="hamburger" id="hamburger" title="Sidebar">☰</button>
+    <div class="brand"><span class="logo">🦞</span> Autogum CTO <span class="badge">Beta 1.0</span></div>
+    <button class="toggle" id="toggle" title="Toggle theme">🌙</button>
+  </div>
 <div class="wrap">
   <div class="chat" id="chat"><div class="emptyhint" id="emptyhint">Ask anything — paste a link to audit, or describe a task</div></div>
   <div class="inputrow">
@@ -520,14 +543,42 @@ button:disabled{opacity:.5;cursor:default}
   <div class="paybox" id="paybox" style="display:none"></div>
   <details class="details"><summary>About</summary>Beta 1.0 · open source · MIT · <a href="https://x.com/autogumcto" target="_blank" rel="noopener">X</a> · <a href="https://www.moltbook.com/u/autogum-cto" target="_blank" rel="noopener">Moltbook</a> · <a href="https://github.com/vivek29621/autogum-cto" target="_blank" rel="noopener">GitHub</a></details>
   <div class="foot">Open source · MIT licensed · beta 1.0 · ghost in the wires</div>
+  </div>
+  </div>
 </div>
 <script>
 const chat=document.getElementById('chat'),inp=document.getElementById('inp'),send=document.getElementById('send'),
   paybox=document.getElementById('paybox'),toggle=document.getElementById('toggle'),
   brain=document.getElementById('brain'),modelpanel=document.getElementById('modelpanel'),
   creditsEl=document.getElementById('credits'),byokey=document.getElementById('byokey'),
-  byobtn=document.getElementById('byobtn'),mpbyo=document.getElementById('mpbyo'),mpnote=document.getElementById('mpnote');
+  byobtn=document.getElementById('byobtn'),mpbyo=document.getElementById('mpbyo'),mpnote=document.getElementById('mpnote'),
+  sidebar=document.getElementById('sidebar'),hamburger=document.getElementById('hamburger'),
+  newchat=document.getElementById('newchat'),convlist=document.getElementById('convlist');
 let credits=5, byo=false;
+// --- sidebar + conversations (localStorage) ---
+let convs = JSON.parse(localStorage.getItem('ag_convs')||'[]');
+let currentConv = null;
+function saveConvs(){localStorage.setItem('ag_convs', JSON.stringify(convs.slice(0,30)))}
+function renderConvs(){
+  convlist.innerHTML='';
+  convs.forEach((c,i)=>{
+    const d=document.createElement('div');d.className='conv'+(i===currentConv?' active':'');
+    d.textContent=(c.msgs[0]?.text||'New chat').slice(0,40);
+    d.onclick=()=>{loadConv(i)};
+    convlist.appendChild(d);
+  });
+}
+function loadConv(i){
+  currentConv=i;renderConvs();chat.innerHTML='';
+  convs[i].msgs.forEach(m=>{const h=document.getElementById('emptyhint');if(h)h.remove();const d=document.createElement('div');d.className='msg '+m.who;d.textContent=m.text;chat.appendChild(d)});
+  chat.scrollTop=chat.scrollHeight;
+}
+function newChat(){
+  currentConv=null;chat.innerHTML='<div class="emptyhint">Ask anything — paste a link to audit, or describe a task</div>';
+}
+newchat.onclick=newChat;
+hamburger.onclick=()=>sidebar.classList.toggle('collapsed');
+renderConvs();
 // brain toggle: show model panel (5 credits visible there)
 brain.onclick=()=>{modelpanel.style.display=modelpanel.style.display==='none'?'block':'none'};
 document.querySelectorAll('input[name="model"]').forEach(r=>r.onchange=()=>{
@@ -554,12 +605,19 @@ async function go(){
       add(d.message,'bot',true);
       paybox.style.display='block';
       paybox.innerHTML='<b>Credits used.</b> '+(d.pay_link?'<a href="'+d.pay_link+'" target="_blank">Pay $'+d.price+' on Gumroad</a>':'Hosted top-up coming in a later beta.')+' — or use your own key above to continue.';
+      saveMsg(m,d.message||'',true);
       send.disabled=false;return;
     }
     add(d.reply||'(no reply)','bot');
+    saveMsg(m,d.reply||'(no reply)');
     if(!byo&&typeof d.remaining==='number'){credits=d.remaining;creditsEl.textContent=credits;}
   }catch(e){add('Error: '+e.message,'bot')}
   send.disabled=false;
+}
+function saveMsg(userText, botText, paywall){
+  if(currentConv===null){convs.unshift({msgs:[]});currentConv=0;}
+  convs[currentConv].msgs.push({who:'me',text:userText},{who:'bot',text:botText});
+  saveConvs();renderConvs();
 }
 send.onclick=go;inp.onkeydown=e=>{if(e.key==='Enter')go()};
 // no auto welcome — chat starts empty; first message from the bot comes only after the user sends something
