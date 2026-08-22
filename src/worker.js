@@ -25,6 +25,13 @@ export default {
 
     // serve the chat UI
     if (request.method === "GET" && (path === "/" || path === "/index.html")) {
+      return new Response(LANDING_HTML, {
+        headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
+      });
+    }
+
+    // chat app (ChatGPT-style)
+    if (request.method === "GET" && path === "/chat") {
       return new Response(UI_HTML, {
         headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
       });
@@ -299,6 +306,73 @@ async function getVisitor(request, env) {
 }
 
 // ---------- UI ----------
+// Landing page (ChatGPT-style: brand + what it does + free CTA → /chat)
+const LANDING_HTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Autogum CTO — The Agent That Grows With You</title>
+<meta name="description" content="Autogum CTO — an autonomous, open-source AI agent. Paste a link, get a security audit, task fixes, or code. Open source, MIT. 5 free credits to try.">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#ffffff;--txt:#18181b;--dim:#71717a;--border:#e5e7eb;--accent:#6366f1;--accent2:#8b5cf6}
+[data-theme="dark"]{--bg:#0b0d12;--txt:#e8ecf4;--dim:#8b94a7;--border:#232a3a;--accent:#60a5fa;--accent2:#8b5cf6}
+body{background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;transition:background .2s,color .2s}
+nav{max-width:1080px;margin:0 auto;padding:20px 24px;display:flex;align-items:center;justify-content:space-between}
+.brand{display:flex;align-items:center;gap:10px;font-size:17px;font-weight:700}
+.brand .logo{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:15px}
+.nav-right{display:flex;align-items:center;gap:12px}
+.toggle{background:none;border:1px solid var(--border);border-radius:10px;width:38px;height:38px;cursor:pointer;font-size:17px;color:var(--txt)}
+.btn{padding:10px 20px;border-radius:12px;font-weight:600;font-size:14px;text-decoration:none;display:inline-block}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-ghost{border:1px solid var(--border);color:var(--txt)}
+.hero{max-width:1080px;margin:0 auto;padding:90px 24px 60px;text-align:center}
+.badge{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--accent);border:1px solid var(--accent);border-radius:999px;padding:5px 12px;margin-bottom:22px}
+h1{font-size:56px;line-height:1.08;font-weight:750;letter-spacing:-0.03em;margin-bottom:22px}
+h1 .grad{background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.lead{font-size:19px;color:var(--dim);max-width:640px;margin:0 auto 36px;line-height:1.55}
+.cta-row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.btn-lg{padding:14px 28px;font-size:16px}
+.features{max-width:1080px;margin:0 auto;padding:40px 24px 80px;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px}
+.feat{background:var(--bg);border:1px solid var(--border);border-radius:16px;padding:24px}
+.feat .icon{font-size:22px;margin-bottom:10px}
+.feat h3{font-size:16px;margin-bottom:8px}
+.feat p{font-size:14px;color:var(--dim);line-height:1.55}
+.foot{max-width:1080px;margin:0 auto;padding:24px;text-align:center;font-size:12px;color:var(--dim)}
+</style>
+</head>
+<body>
+<nav>
+  <div class="brand"><span class="logo">🦞</span> Autogum CTO</div>
+  <div class="nav-right">
+    <button class="toggle" id="toggle" title="Theme">🌙</button>
+    <a class="btn btn-primary" href="/chat">Open chat</a>
+  </div>
+</nav>
+<section class="hero">
+  <span class="badge">Open Source · MIT License · Beta 1.0</span>
+  <h1>The agent that<br><span class="grad">grows with you</span></h1>
+  <p class="lead">Autonomous, self-improving AI agent. Paste a link, get a security audit. Describe a task, get it fixed. 5 free credits, then bring your own model.</p>
+  <div class="cta-row">
+    <a class="btn btn-primary btn-lg" href="/chat">Try free — 5 credits</a>
+    <a class="btn btn-ghost btn-lg" href="https://github.com/vivek29621/autogum-cto" target="_blank" rel="noopener">View on GitHub</a>
+  </div>
+</section>
+<section class="features">
+  <div class="feat"><div class="icon">🔍</div><h3>Link audit</h3><p>Paste any URL — get security headers, exposed configs, and outdated patterns flagged with prioritized fixes.</p></div>
+  <div class="feat"><div class="icon">⚙️</div><h3>Task fixes</h3><p>Describe a problem and get code, config, or instructions. Concise, practical, honest.</p></div>
+  <div class="feat"><div class="icon">🔌</div><h3>Bring your own model</h3><p>Connect an OpenAI-compatible API key for unlimited use. Your key, your cost.</p></div>
+</section>
+<footer class="foot">Open source · MIT · autonomous self-improving AI agent · ghost in the wires</footer>
+<script>
+const saved=localStorage.getItem('theme');
+if(saved==='dark')document.documentElement.setAttribute('data-theme','dark'),document.getElementById('toggle').textContent='☀️';
+document.getElementById('toggle').onclick=()=>{const d=document.documentElement;const dark=d.getAttribute('data-theme')==='dark';d.setAttribute('data-theme',dark?'':'dark');localStorage.setItem('theme',dark?'':'dark');document.getElementById('toggle').textContent=dark?'🌙':'☀️'};
+</script>
+</body>
+</html>`;
+
+// Chat app (ChatGPT-style)
 const UI_HTML = `<!DOCTYPE html>
 <html lang="en">
 <head>
