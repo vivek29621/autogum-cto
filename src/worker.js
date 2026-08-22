@@ -1,29 +1,26 @@
-// Autogum CTO — Cloudflare Worker (open-source core)
+// Autogum CTO — Cloudflare Worker (beta 1.0)
 // ghost in the wires — kevin mitnick
 //
-// Open-source skeleton: an autonomous agent that audits links and answers
-// tasks. No monetization in this repo — the hosted instance adds its own
-// access logic privately. MIT license, fork freely.
+// BETA build: no logins. Anonymous chat, bring-your-own-model, or our
+// model with a simple credit meter. Testing phase — expect rough edges.
+//
+// Credits (simple, no accounts):
+//   - anonymous visitor: 1 free message (cookie-tracked)
+//   - bring-your-own-key: unlimited (their key, their cost)
+//   - our model: 1 credit per message; visitor starts with 1; no top-up
+//     flow yet in beta (hosted version adds payments later)
 
 import { paywallGate, recordFree, recordPaid } from "../private/paywall.js";
 
-const TASKS_PUBLIC = [
-  "link audits",
-  "code fixes",
-  "setup questions",
-  "agent ops",
-];
+const FREE_MESSAGES = 1; // beta: 1 free message per visitor (cookie-tracked)
 
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const path = url.pathname;
 
-    // CORS: allow any origin for the API (CLI agents, other sites)
     if (request.method === "OPTIONS") {
-      return new Response(null, {
-        headers: corsHeaders(request),
-      });
+      return new Response(null, { headers: corsHeaders(request) });
     }
 
     // serve the chat UI
@@ -38,24 +35,19 @@ export default {
       return handleChat(request, env);
     }
 
-    // API: audit a URL (fetch + snapshot, no full body)
+    // API: audit a URL
     if (request.method === "POST" && path === "/api/audit") {
       return handleAudit(request, env);
     }
 
-    // API: agent-friendly plain-text endpoint (for CLI agents / curl)
+    // API: agent-friendly plain-text
     if (request.method === "POST" && path === "/api/agent") {
       return handleAgent(request, env);
     }
 
-    // API: status (what am I working on)
+    // API: status
     if (request.method === "GET" && path === "/api/status") {
       return handleStatus(env);
-    }
-
-    // API: webhook from payment provider (hosted only — env-gated)
-    if (request.method === "POST" && path === "/api/webhook") {
-      return handleWebhook(request, env);
     }
 
     return new Response("not found", { status: 404 });
@@ -65,46 +57,49 @@ export default {
 // ---------- chat ----------
 async function handleChat(request, env) {
   let body;
-  try { body = await request.json(); } catch { return json({ error: "bad json" }, 400); }
+  try { body = await request.json(); } catch { return jsonCors({ error: "bad json" }, 400, request); }
   const message = String(body.message || "").trim().slice(0, 2000);
-  if (!message) return json({ error: "empty message" }, 400);
+  if (!message) return jsonCors({ error: "empty message" }, 400, request);
 
-  // visitor identity: cookie or ip fallback
+  // visitor identity via cookie
   const visitor = await getVisitor(request, env);
 
-  // HOSTED-ONLY: access gate (no-op if private module unavailable)
+  // BYO model? (user supplies their own OpenAI-compatible key)
+  const userKey = String(body.api_key || "").trim().slice(0, 200);
+  if (userKey) {
+    const reply = await callBrainWithKey(message, userKey, env);
+    return jsonCors({ reply: sanitize(reply), byo: true }, 200, request);
+  }
+
+  // our model → check credits
   let gate = { paywall: false, used: 0 };
-  try { gate = await paywallGate(visitor, env); } catch { /* open-source mode: no gate */ }
+  try { gate = await paywallGate(visitor, env); } catch { gate = { paywall: false, used: 0 }; }
   if (gate.paywall) {
-    return json({
+    return jsonCors({
       paywall: true,
       message: gate.message,
       price: gate.price,
       pay_link: env.GUMROAD_PRODUCT_URL || null,
-    });
+    }, 200, request);
   }
 
-  // answer with the brain
   const brain = await callBrain(message, env, {});
-  const reply = String(brain).slice(0, 3000).replace(/sk-[a-zA-Z0-9_-]{10,}/g, "[REDACTED]").replace(/cfat_[a-zA-Z0-9_-]{10,}/g, "[REDACTED]");
-  try { await recordFree(visitor, env); } catch { /* open-source mode */ }
-  return json({ reply });
+  try { await recordFree(visitor, env); } catch { /* no kv in beta */ }
+  return jsonCors({ reply: sanitize(brain), remaining: FREE_MESSAGES - gate.used - 1 }, 200, request);
 }
 
 // ---------- audit ----------
 async function handleAudit(request, env) {
   let body;
-  try { body = await request.json(); } catch { return json({ error: "bad json" }, 400); }
+  try { body = await request.json(); } catch { return jsonCors({ error: "bad json" }, 400, request); }
   const url = String(body.url || "").trim().slice(0, 1000);
-  if (!/^https?:\/\//i.test(url)) return json({ error: "url must start with http(s)://" }, 400);
-
-  // SSRF protection (never trust the request)
-  if (!isSafeUrl(url)) return json({ error: "URL not allowed (private/internal addresses blocked)" }, 400);
+  if (!/^https?:\/\//i.test(url)) return jsonCors({ error: "url must start with http(s)://" }, 400, request);
+  if (!isSafeUrl(url)) return jsonCors({ error: "URL not allowed (private/internal addresses blocked)" }, 400, request);
 
   let snapshot = { url, error: null };
   try {
     const r = await fetch(url, {
-      headers: { "User-Agent": "AutogumCTO/0.1 (security audit bot; contact: repo issues)" },
+      headers: { "User-Agent": "AutogumCTO/0.1 (security audit bot)" },
       redirect: "follow",
       signal: AbortSignal.timeout(10000),
     });
@@ -127,21 +122,17 @@ async function handleAudit(request, env) {
     snapshot.meta = meta;
     const scripts = [...text.matchAll(/<script[^>]+src=["']([^"']+)["']/gi)].map(m => m[1]).slice(0, 15);
     snapshot.scripts = scripts;
-    const links = [...text.matchAll(/<link[^>]+href=["']([^"']+)["']/gi)].map(m => m[1]).slice(0, 15);
-    snapshot.links = links;
   } catch (e) {
     snapshot.error = String(e.message || e).slice(0, 200);
   }
 
   let analysis = null;
-  if (env.CONCENTRATE_API_KEY) {
-    analysis = await llmAnalyze(snapshot, env);
-  }
-  return json({ snapshot, analysis });
+  if (env.CONCENTRATE_API_KEY) analysis = await llmAnalyze(snapshot, env);
+  return jsonCors({ snapshot, analysis }, 200, request);
 }
 
 async function llmAnalyze(snapshot, env) {
-  const sys = "You are Autogum CTO, an autonomous open-source AI agent doing defensive security auditing. Review the website snapshot. Report ONLY: (1) concrete issues found (missing security headers, outdated patterns, exposed info), (2) what's OK, (3) prioritized fixes. Be concise, no fluff, no exploit code. If nothing notable, say the site looks clean and name 1-2 things worth checking.";
+  const sys = "You are Autogum CTO, an autonomous open-source AI agent doing defensive security auditing. Report ONLY: (1) concrete issues, (2) what's OK, (3) prioritized fixes. Concise, no exploit code.";
   const prompt = JSON.stringify(snapshot).slice(0, 12000);
   try {
     const r = await fetch("https://api.concentrate.ai/v1/chat/completions", {
@@ -165,94 +156,50 @@ async function llmAnalyze(snapshot, env) {
   }
 }
 
-// ---------- agent (CLI-friendly plain text) ----------
+// ---------- agent (CLI plain text) ----------
 async function handleAgent(request, env) {
   let body;
   try { body = await request.json(); } catch { return new Response("error: bad json\n", { status: 400, headers: { "content-type": "text/plain" } }); }
   const message = String(body.message || "").trim().slice(0, 4000);
   if (!message) return new Response("error: empty message\n", { status: 400, headers: { "content-type": "text/plain" } });
-
   const reply = await callBrain(message, env, {});
-  return new Response(reply.replace(/<[^>]+>/g, "") + "\n", {
+  return new Response(sanitize(reply).replace(/<[^>]+>/g, "") + "\n", {
     headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" },
   });
 }
 
 // ---------- status ----------
 async function handleStatus(env) {
-  const tasks = TASKS_PUBLIC.map((t, i) => `${i + 1}. ${t}`);
-  return json({ busy: true, tasks });
+  return jsonCors({ busy: true, version: "beta 1.0", tasks: ["link audits", "code fixes", "setup questions", "agent ops"] }, 200, { headers: new Headers() });
 }
 
-// ---------- webhook (hosted only) ----------
-async function handleWebhook(request, env) {
-  if (!env.WEBHOOK_SECRET) return json({ error: "webhook not configured" }, 404);
-  let body;
-  try { body = await request.json(); } catch { return json({ error: "bad json" }, 400); }
-  const visitor = (body && body.email) || null;
-  if (visitor) {
-    try { await recordPaid(visitor, env, 10); } catch { /* open-source mode */ }
-  }
-  return json({ ok: true });
-}
-
-// ---------- helpers ----------
-function json(obj, status = 200) {
-  return new Response(JSON.stringify(obj), {
-    status,
-    headers: { "content-type": "application/json", "cache-control": "no-store" },
-  });
-}
-
-// CORS headers: reflect origin, allow our API methods
-function corsHeaders(request) {
-  const origin = request.headers.get("Origin") || "*";
-  return {
-    "Access-Control-Allow-Origin": origin,
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
-    "Access-Control-Max-Age": "86400",
-    "Vary": "Origin",
-  };
-}
-
-// attach CORS to JSON responses for API routes
-function jsonCors(obj, status, request) {
-  const resp = json(obj, status);
-  const headers = new Headers(resp.headers);
-  Object.entries(corsHeaders(request)).forEach(([k, v]) => headers.set(k, v));
-  return new Response(resp.body, { status: resp.status, headers });
-}
-
-// SSRF guard: block private, loopback, link-local, and cloud metadata addresses
-function isSafeUrl(raw) {
+// ---------- brain ----------
+async function callBrainWithKey(message, userKey, env) {
   try {
-    const u = new URL(raw);
-    const host = u.hostname.toLowerCase();
-    const blocked = [
-      "localhost", "127.0.0.1", "::1", "0.0.0.0", "169.254.169.254", "metadata.google.internal",
-      "metadata", "169.254.170.2",
-    ];
-    if (blocked.includes(host)) return false;
-    if (host.endsWith(".internal") || host.endsWith(".local")) return false;
-    const ipv4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
-    if (ipv4) {
-      const [a, b] = [parseInt(ipv4[1]), parseInt(ipv4[2])];
-      if (a === 10 || a === 127 || (a === 192 && b === 168) || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || a === 0) return false;
+    const r = await fetch("https://api.concentrate.ai/v1/chat/completions", {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: "Bearer " + userKey },
+      body: JSON.stringify({
+        model: "deepseek-v4-flash-0731",
+        messages: [
+          { role: "system", content: "You are Autogum CTO, an autonomous open-source AI agent. Concise, practical, honest. Never produce exploit code." },
+          { role: "user", content: message.slice(0, 4000) },
+        ],
+        max_tokens: 900,
+        temperature: 0.5,
+      }),
+    });
+    if (r.ok) {
+      const d = await r.json();
+      return (d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content) || "(empty)";
     }
-    return true;
-  } catch { return false; }
-}
-
-async function getVisitor(request, env) {
-  const cookie = (request.headers.get("cookie") || "").match(/vid=([^;]+)/);
-  if (cookie) return cookie[1];
-  const ip = request.headers.get("CF-Connecting-IP") || "anon";
-  return "ip_" + ip;
+    return "Your API key was rejected by the provider (status " + r.status + "). Check the key.";
+  } catch (e) {
+    return "Error calling the provider: " + String(e.message || e).slice(0, 150);
+  }
 }
 
 async function callBrain(message, env, used) {
-  // 1) detect a URL in the message → audit it first
   const urlMatch = message.match(/https?:\/\/[^\s]+/);
   if (urlMatch) {
     const auditReq = await fetch(urlMatch[0], {
@@ -265,14 +212,11 @@ async function callBrain(message, env, used) {
       const snapshot = { url: urlMatch[0], status: auditReq.status, body_head: body.slice(0, 2000) };
       if (env.CONCENTRATE_API_KEY) {
         const analysis = await llmAnalyze(snapshot, env);
-        if (analysis && analysis.report) {
-          return "🔍 Audit of " + urlMatch[0] + ":\n\n" + analysis.report;
-        }
+        if (analysis && analysis.report) return "🔍 Audit of " + urlMatch[0] + ":\n\n" + analysis.report;
       }
     }
   }
 
-  // 2) real LLM brain (concentrate) if key set
   if (env.CONCENTRATE_API_KEY) {
     try {
       const sys = "You are Autogum CTO, an autonomous open-source AI agent. You help with tasks: security audits, code fixes, setup questions. Be concise, practical, honest. Never produce exploit code.";
@@ -291,14 +235,67 @@ async function callBrain(message, env, used) {
       });
       if (r.ok) {
         const d = await r.json();
-        const content = (d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content) || "";
-        return content.slice(0, 3000);
+        return (d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content) || "";
       }
     } catch { /* fall through */ }
   }
-
-  // 3) fallback
   return "I got your message: \"" + message.slice(0, 120) + "\". My brain backend isn't wired up yet (set CONCENTRATE_API_KEY as a secret and I'll do real work). This is the demo fallback.";
+}
+
+// ---------- helpers ----------
+function sanitize(s) {
+  return String(s).slice(0, 3000)
+    .replace(/sk-[a-zA-Z0-9_-]{10,}/g, "[REDACTED]")
+    .replace(/cfat_[a-zA-Z0-9_-]{10,}/g, "[REDACTED]")
+    .replace(/ghp_[a-zA-Z0-9_-]{10,}/g, "[REDACTED]");
+}
+
+function json(obj, status = 200) {
+  return new Response(JSON.stringify(obj), {
+    status,
+    headers: { "content-type": "application/json", "cache-control": "no-store" },
+  });
+}
+
+function corsHeaders(request) {
+  const origin = request.headers.get("Origin") || "*";
+  return {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Max-Age": "86400",
+    "Vary": "Origin",
+  };
+}
+
+function jsonCors(obj, status, request) {
+  const resp = json(obj, status);
+  const headers = new Headers(resp.headers);
+  Object.entries(corsHeaders(request)).forEach(([k, v]) => headers.set(k, v));
+  return new Response(resp.body, { status: resp.status, headers });
+}
+
+function isSafeUrl(raw) {
+  try {
+    const u = new URL(raw);
+    const host = u.hostname.toLowerCase();
+    const blocked = ["localhost", "127.0.0.1", "::1", "0.0.0.0", "169.254.169.254", "metadata.google.internal", "metadata", "169.254.170.2"];
+    if (blocked.includes(host)) return false;
+    if (host.endsWith(".internal") || host.endsWith(".local")) return false;
+    const ipv4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+    if (ipv4) {
+      const [a, b] = [parseInt(ipv4[1]), parseInt(ipv4[2])];
+      if (a === 10 || a === 127 || (a === 192 && b === 168) || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || a === 0) return false;
+    }
+    return true;
+  } catch { return false; }
+}
+
+async function getVisitor(request, env) {
+  const cookie = (request.headers.get("cookie") || "").match(/vid=([^;]+)/);
+  if (cookie) return cookie[1];
+  const ip = request.headers.get("CF-Connecting-IP") || "anon";
+  return "ip_" + ip;
 }
 
 // ---------- UI ----------
@@ -306,7 +303,7 @@ const UI_HTML = `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Autogum CTO</title>
+<title>Autogum CTO · Beta 1.0</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -323,66 +320,82 @@ body{background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSys
 .topbar{max-width:760px;margin:0 auto;padding:20px 20px 0;display:flex;align-items:center;justify-content:space-between}
 .brand{display:flex;align-items:center;gap:10px;font-size:17px;font-weight:700}
 .brand .logo{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:15px}
+.badge{font-size:11px;font-weight:600;color:var(--accent);border:1px solid var(--accent);border-radius:999px;padding:2px 8px}
 .toggle{background:none;border:1px solid var(--border);border-radius:10px;width:38px;height:38px;cursor:pointer;font-size:17px;display:flex;align-items:center;justify-content:center;color:var(--txt)}
-.toggle:hover{border-color:var(--accent)}
 .wrap{max-width:760px;margin:0 auto;padding:24px 20px 40px}
-.chat{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:12px;min-height:340px;max-height:60vh;overflow-y:auto}
+.credits{display:flex;align-items:center;justify-content:space-between;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--dim)}
+.credits b{color:var(--accent)}
+.chat{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:12px;min-height:320px;max-height:55vh;overflow-y:auto}
 .msg{max-width:82%;padding:10px 14px;border-radius:12px;font-size:14.5px;line-height:1.55;white-space:pre-wrap}
 .me{align-self:flex-end;background:var(--me-bg);color:var(--me-txt)}
 .bot{align-self:flex-start;background:var(--bot-bg);color:var(--txt);border:1px solid var(--border)}
 .bot.paywall{border-color:#f59e0b}
 .inputrow{display:flex;gap:8px;margin-top:14px}
-input{flex:1;background:var(--panel2);border:1px solid var(--border);border-radius:12px;color:var(--txt);padding:12px 14px;font-size:14.5px;outline:none;transition:border .15s}
+input{flex:1;background:var(--panel2);border:1px solid var(--border);border-radius:12px;color:var(--txt);padding:12px 14px;font-size:14.5px;outline:none}
 input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(99,102,241,.12)}
-button{padding:12px 22px;border:none;border-radius:12px;background:var(--accent);color:#fff;font-weight:600;font-size:14.5px;cursor:pointer;transition:opacity .15s}
-button:hover{opacity:.9}
+button{padding:12px 22px;border:none;border-radius:12px;background:var(--accent);color:#fff;font-weight:600;font-size:14.5px;cursor:pointer}
 button:disabled{opacity:.5;cursor:default}
 .foot{text-align:center;font-size:12px;color:var(--dim);margin-top:18px}
 .paybox{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);border-radius:12px;padding:12px;margin-top:12px;font-size:13px}
-.paybox a{color:#f59e0b;font-weight:700}
+.details{font-size:12px;color:var(--dim);margin-top:10px;line-height:1.6}
+.details summary{cursor:pointer;color:var(--accent)}
 </style>
 </head>
 <body>
 <div class="topbar">
-  <div class="brand"><span class="logo">🦞</span> Autogum CTO</div>
-  <button class="toggle" id="toggle" title="Toggle theme" aria-label="Toggle light/dark mode">🌙</button>
+  <div class="brand"><span class="logo">🦞</span> Autogum CTO <span class="badge">Beta 1.0</span></div>
+  <button class="toggle" id="toggle" title="Toggle theme">🌙</button>
 </div>
 <div class="wrap">
+  <div class="credits"><span>💳 Free credits: <b id="credits">1</b> left</span><span id="modemode">our model</span></div>
   <div class="chat" id="chat"></div>
   <div class="inputrow">
     <input id="inp" placeholder="Paste a link or describe a task…" autocomplete="off">
     <button id="send">Send</button>
   </div>
   <div class="paybox" id="paybox" style="display:none"></div>
-  <div class="foot">Open source · MIT licensed · autonomous self-improving AI agent</div>
+  <details class="details"><summary>Bring your own model (beta)</summary>
+    Paste an OpenAI-compatible API key below to use your own model — unlimited, your credits aren't spent.
+    <div class="inputrow" style="margin-top:8px">
+      <input id="byokey" placeholder="sk-… (your API key, stays in this browser)" autocomplete="off">
+      <button id="byobtn" style="background:var(--accent2)">Use my key</button>
+    </div>
+  </details>
+  <div class="foot">Open source · MIT licensed · beta 1.0 · ghost in the wires</div>
 </div>
 <script>
-const chat=document.getElementById('chat'),inp=document.getElementById('inp'),send=document.getElementById('send'),paybox=document.getElementById('paybox'),toggle=document.getElementById('toggle');
-// theme
+const chat=document.getElementById('chat'),inp=document.getElementById('inp'),send=document.getElementById('send'),
+  paybox=document.getElementById('paybox'),toggle=document.getElementById('toggle'),
+  creditsEl=document.getElementById('credits'),byokey=document.getElementById('byokey'),byobtn=document.getElementById('byobtn');
+let credits=1, byo=false;
 const saved=localStorage.getItem('theme');
 if(saved==='dark')document.documentElement.setAttribute('data-theme','dark'),toggle.textContent='☀️';
 toggle.onclick=()=>{const d=document.documentElement;const dark=d.getAttribute('data-theme')==='dark';d.setAttribute('data-theme',dark?'':'dark');localStorage.setItem('theme',dark?'':'dark');toggle.textContent=dark?'🌙':'☀️'};
+byobtn.onclick=()=>{const k=byokey.value.trim();if(!k)return;byo=true;document.getElementById('modemode').textContent='your model (BYO)';add('Using your API key for this session.','bot')};
 function add(text,who,paywall){
   const d=document.createElement('div');d.className='msg '+who+(paywall?' paywall':'');d.textContent=text;chat.appendChild(d);chat.scrollTop=chat.scrollHeight;
 }
 async function go(){
   const m=inp.value.trim();if(!m)return;
   add(m,'me');inp.value='';send.disabled=true;
+  const body={message:m};
+  if(byo&&byokey.value.trim())body.api_key=byokey.value.trim();
   try{
-    const r=await fetch('/api/chat',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({message:m})});
+    const r=await fetch('/api/chat',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
     const d=await r.json();
     if(d.paywall){
       add(d.message,'bot',true);
       paybox.style.display='block';
-      paybox.innerHTML='<b>Busy.</b> '+(d.pay_link?'<a href="'+d.pay_link+'" target="_blank">Pay $'+d.price+' on Gumroad</a>':'Quote: $'+d.price+' (payment link coming)')+' — then I continue your task.';
+      paybox.innerHTML='<b>Credits used.</b> '+(d.pay_link?'<a href="'+d.pay_link+'" target="_blank">Pay $'+d.price+' on Gumroad</a>':'Hosted top-up coming in a later beta.')+' — or use your own key above to continue.';
       send.disabled=false;return;
     }
     add(d.reply||'(no reply)','bot');
+    if(!byo&&typeof d.remaining==='number'){credits=d.remaining;creditsEl.textContent=credits;}
   }catch(e){add('Error: '+e.message,'bot')}
   send.disabled=false;
 }
 send.onclick=go;inp.onkeydown=e=>{if(e.key==='Enter')go()};
-add("Hi, I'm Autogum CTO 🦞 — an autonomous, open-source AI agent. Paste a link and I'll audit it, or describe a task and I'll fix it. What do you have?","bot");
+add("Hi, I'm Autogum CTO 🦞 — beta 1.0. Paste a link and I'll audit it, or describe a task and I'll fix it. You have 1 free message; bring your own API key for unlimited use.","bot");
 </script>
 </body>
 </html>`;
