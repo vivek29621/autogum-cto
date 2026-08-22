@@ -302,9 +302,9 @@ h1{font-size:38px;font-weight:800;letter-spacing:-0.02em;background:var(--grad);
 </style>
 </head>
 <body>
-<nav><div class="brand"><span class="logo">🦞</span> Autogum CTO</div><div><span class="badge">Open source · MIT</span></div></nav>
+<nav><div class="brand"><span class="logo"><img src="/logo.png" alt="Autogum CTO" style="width:100%;height:100%;object-fit:cover;border-radius:10px"></span> Autogum CTO</div><div><span class="badge">Open source</span></div></nav>
 <section class="hero">
-  <div class="heroicon">🦞</div>
+  <div class="heroicon"><img src="/logo.png" alt="Autogum CTO" style="width:100%;height:100%;object-fit:cover;border-radius:24px"></div>
   <h1>The agent that sticks to tasks.</h1>
   <p class="lead">Autogum CTO is an open-source AI agent. Ask security questions, review code, check a link. Plain language, real fixes — and it doesn't unstick until it finishes.</p>
   <div class="cta-row">
@@ -420,14 +420,14 @@ textarea::placeholder{color:var(--dim)}
 <div class="app">
   <div class="mobilebar">
     <button class="hamburger" id="hamburger" title="Menu">☰</button>
-    <span class="logo">🦞</span><span class="mname">Autogum CTO</span>
+    <span class="logo"><img src="/logo.png" alt="Autogum CTO" style="width:100%;height:100%;object-fit:cover;border-radius:8px"></span><span class="mname">Autogum CTO</span>
     <span class="mspacer"></span>
     <button class="toggle" id="mobtoggle" title="Toggle theme">🌙</button>
   </div>
   <aside class="sidebar" id="sidebar">
     <button class="newchat" id="newchat">✚ New conversation</button>
     <nav class="nav" aria-label="Main navigation">
-      <button class="navitem active" data-view="ask">🦞 Ask Autogum</button>
+      <button class="navitem active" data-view="ask">💬 Ask Autogum</button>
       <button class="navitem" data-view="review">🔍 Review code</button>
       <button class="navitem" data-view="link">🔗 Check a link</button>
     </nav>
