@@ -19,6 +19,13 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
 
+    // CORS: allow any origin for the API (CLI agents, other sites)
+    if (request.method === "OPTIONS") {
+      return new Response(null, {
+        headers: corsHeaders(request),
+      });
+    }
+
     // serve the chat UI
     if (request.method === "GET" && (path === "/" || path === "/index.html")) {
       return new Response(UI_HTML, {
@@ -195,6 +202,26 @@ function json(obj, status = 200) {
     status,
     headers: { "content-type": "application/json", "cache-control": "no-store" },
   });
+}
+
+// CORS headers: reflect origin, allow our API methods
+function corsHeaders(request) {
+  const origin = request.headers.get("Origin") || "*";
+  return {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Max-Age": "86400",
+    "Vary": "Origin",
+  };
+}
+
+// attach CORS to JSON responses for API routes
+function jsonCors(obj, status, request) {
+  const resp = json(obj, status);
+  const headers = new Headers(resp.headers);
+  Object.entries(corsHeaders(request)).forEach(([k, v]) => headers.set(k, v));
+  return new Response(resp.body, { status: resp.status, headers });
 }
 
 // SSRF guard: block private, loopback, link-local, and cloud metadata addresses
