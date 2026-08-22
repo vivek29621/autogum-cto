@@ -5,7 +5,7 @@ compatibility_date = "2026-08-01"
 # KV for message counters + session memory
 [[kv_namespaces]]
 binding = "AUTOGUM"
-id = "REPLACE_WITH_KV_ID"
+id = "11f3b6ffcef641d78e46a74d92a77b3b"
 
 # Variables
 [vars]

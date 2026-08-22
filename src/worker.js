@@ -85,7 +85,9 @@ async function handleChat(request, env) {
   // FREE message: relay to the agent brain
   const brain = await callBrain(message, env, used);
   await bumpMessages(visitor, env, "free");
-  return json({ reply: brain, used: { free_used: used.free_used + 1, paid_used: used.paid_used }, remaining_free: FREE_MESSAGES - used.free_used - 1 });
+  // sanitize: never leak internals (Mitnick: information is power)
+  const reply = String(brain).slice(0, 3000).replace(/sk-[a-zA-Z0-9_-]{10,}/g, "[REDACTED]").replace(/cfat_[a-zA-Z0-9_-]{10,}/g, "[REDACTED]");
+  return json({ reply, used: { free_used: used.free_used + 1, paid_used: used.paid_used }, remaining_free: FREE_MESSAGES - used.free_used - 1 });
 }
 
 // ---------- audit ----------
@@ -94,6 +96,9 @@ async function handleAudit(request, env) {
   try { body = await request.json(); } catch { return json({ error: "bad json" }, 400); }
   const url = String(body.url || "").trim().slice(0, 1000);
   if (!/^https?:\/\//i.test(url)) return json({ error: "url must start with http(s)://" }, 400);
+
+  // SSRF protection (Mitnick principle: never trust the request)
+  if (!isSafeUrl(url)) return json({ error: "URL not allowed (private/internal addresses blocked)" }, 400);
 
   // fetch bounded: 2MB body cap, 10s timeout, only text/html
   let snapshot = { url, error: null };
@@ -201,6 +206,28 @@ function json(obj, status = 200) {
     status,
     headers: { "content-type": "application/json", "cache-control": "no-store" },
   });
+}
+
+// SSRF guard: block private, loopback, link-local, and cloud metadata addresses
+function isSafeUrl(raw) {
+  try {
+    const u = new URL(raw);
+    const host = u.hostname.toLowerCase();
+    // block IP-based private/internal hosts
+    const blocked = [
+      "localhost", "127.0.0.1", "::1", "0.0.0.0", "169.254.169.254", "metadata.google.internal",
+      "metadata", "169.254.170.2",
+    ];
+    if (blocked.includes(host)) return false;
+    if (host.endsWith(".internal") || host.endsWith(".local")) return false;
+    // block private IPv4 ranges
+    const ipv4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+    if (ipv4) {
+      const [a, b] = [parseInt(ipv4[1]), parseInt(ipv4[2])];
+      if (a === 10 || a === 127 || (a === 192 && b === 168) || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || a === 0) return false;
+    }
+    return true;
+  } catch { return false; }
 }
 
 async function getVisitor(request, env) {
