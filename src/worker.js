@@ -258,7 +258,7 @@ async function callBrain(message, env, used) {
       }
     } catch { /* fall through */ }
   }
-  return "I got your message: \"" + message.slice(0, 120) + "\". My brain backend isn't wired up yet (set CONCENTRATE_API_KEY as a secret and I'll do real work). This is the demo fallback.";
+  return "I'm in demo mode right now — no model key wired on this instance. Paste a link and I'll still audit it. For real answers, bring your own API key (🧠 button) or check back when the hosted brain ships in the next beta.";
 }
 
 // ---------- helpers ----------
@@ -416,7 +416,7 @@ h1 .grad{background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-
   <h1>The agent that<br><span class="grad">grows with you</span></h1>
   <p class="lead">An autonomous, self-improving AI <b>agent</b> — not just a model. Paste a link, get a security audit. Describe a task, get it fixed. 5 free credits, then bring your own model.</p>
   <div class="cta-row">
-    <a class="btn btn-primary btn-lg" href="/chat">🚀 Try free — 5 credits</a>
+    <a class="btn btn-primary btn-lg" href="/chat">Try free — 5 credits</a>
     <a class="btn btn-ghost btn-lg" href="https://github.com/vivek29621/autogum-cto" target="_blank" rel="noopener">⭐ View on GitHub</a>
     <a class="btn btn-ghost btn-lg" href="https://github.com/vivek29621/autogum-cto/archive/refs/heads/main.zip" download>⬇️ Download</a>
   </div>
