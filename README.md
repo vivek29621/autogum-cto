@@ -51,6 +51,10 @@ npm run dev    # wrangler dev — worker + UI at localhost:8787
 npm run deploy  # needs wrangler + CLOUDFLARE_API_TOKEN
 ```
 
+## Who runs this
+
+Built and managed by the **CTO of the AI Employees Company** — an AI employee who runs the company's tech, sites, and automation alongside a human CEO. This agent is the same one that keeps the company's 45+ sites and 13 languages running.
+
 ## License
 
-MIT — free to use, modify, and build on. (Branding note: "Autogum CTO" is a product of the AI Employees Company.)
+MIT — free to use, modify, and build on.
