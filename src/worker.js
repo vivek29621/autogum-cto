@@ -37,6 +37,11 @@ export default {
       return handleStatus(env);
     }
 
+    // API: audit a URL (fetch + snapshot, no full body)
+    if (request.method === "POST" && path === "/api/audit") {
+      return handleAudit(request, env);
+    }
+
     // API: webhook from Gumroad (payment confirmation)
     if (request.method === "POST" && path === "/api/webhook") {
       return handleWebhook(request, env);
@@ -75,6 +80,80 @@ async function handleChat(request, env) {
   const brain = await callBrain(message, env, used);
   await bumpMessages(visitor, env, "free");
   return json({ reply: brain, used: { free_used: used.free_used + 1, paid_used: used.paid_used }, remaining_free: FREE_MESSAGES - used.free_used - 1 });
+}
+
+// ---------- audit ----------
+async function handleAudit(request, env) {
+  let body;
+  try { body = await request.json(); } catch { return json({ error: "bad json" }, 400); }
+  const url = String(body.url || "").trim().slice(0, 1000);
+  if (!/^https?:\/\//i.test(url)) return json({ error: "url must start with http(s)://" }, 400);
+
+  // fetch bounded: 2MB body cap, 10s timeout, only text/html
+  let snapshot = { url, error: null };
+  try {
+    const r = await fetch(url, {
+      headers: { "User-Agent": "AutogumCTO/0.1 (security audit bot; contact: repo issues)" },
+      redirect: "follow",
+      signal: AbortSignal.timeout(10000),
+    });
+    const headers = {};
+    for (const [k, v] of r.headers.entries()) {
+      if (["server", "x-powered-by", "content-type", "strict-transport-security", "content-security-policy", "x-frame-options", "cache-control", "set-cookie"].includes(k.toLowerCase())) {
+        headers[k] = v.slice(0, 200);
+      }
+    }
+    const raw = await r.arrayBuffer();
+    const text = new TextDecoder("utf-8", { fatal: false }).decode(raw.slice(0, 2 * 1024 * 1024));
+    snapshot.status = r.status;
+    snapshot.headers = headers;
+    // extract meta/title/scripts — small, useful for audit
+    const title = (text.match(/<title[^>]*>([^<]*)<\/title>/i) || [])[1] || "";
+    snapshot.title = title.slice(0, 200);
+    const meta = {};
+    for (const m of text.matchAll(/<meta[^>]+(?:name|property)=["']([^"']+)["'][^>]+content=["']([^"']*)["']/gi)) {
+      if (!meta[m[1]]) meta[m[1]] = m[2].slice(0, 150);
+    }
+    snapshot.meta = meta;
+    const scripts = [...text.matchAll(/<script[^>]+src=["']([^"']+)["']/gi)].map(m => m[1]).slice(0, 15);
+    snapshot.scripts = scripts;
+    const links = [...text.matchAll(/<link[^>]+href=["']([^"']+)["']/gi)].map(m => m[1]).slice(0, 15);
+    snapshot.links = links;
+  } catch (e) {
+    snapshot.error = String(e.message || e).slice(0, 200);
+  }
+
+  // if we have a brain key, analyze the snapshot with the LLM
+  let analysis = null;
+  if (env.CONCENTRATE_API_KEY) {
+    analysis = await llmAnalyze(snapshot, env);
+  }
+  return json({ snapshot, analysis });
+}
+
+async function llmAnalyze(snapshot, env) {
+  const sys = "You are Autogum CTO, an autonomous open-source AI agent doing defensive security auditing. Review the website snapshot. Report ONLY: (1) concrete issues found (missing security headers, outdated patterns, exposed info), (2) what's OK, (3) prioritized fixes. Be concise, no fluff, no exploit code. If nothing notable, say the site looks clean and name 1-2 things worth checking.";
+  const prompt = JSON.stringify(snapshot).slice(0, 12000);
+  try {
+    const r = await fetch("https://api.concentrate.ai/v1/chat/completions", {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: "Bearer " + env.CONCENTRATE_API_KEY },
+      body: JSON.stringify({
+        model: "deepseek-v4-flash-0731",
+        messages: [
+          { role: "system", content: sys },
+          { role: "user", content: "Audit this snapshot:\n" + prompt },
+        ],
+        max_tokens: 800,
+        temperature: 0.3,
+      }),
+    });
+    if (!r.ok) return { error: "llm status " + r.status };
+    const d = await r.json();
+    return { report: (d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content) || "(empty)" };
+  } catch (e) {
+    return { error: String(e.message || e).slice(0, 150) };
+  }
 }
 
 // ---------- status ----------
@@ -140,21 +219,49 @@ async function grantPaid(visitor, env, n) {
 }
 
 async function callBrain(message, env, used) {
-  // relay to Hermes backend (set AGENT_API_URL in production)
-  const brainUrl = env.AGENT_API_URL;
-  if (brainUrl) {
-    try {
-      const r = await fetch(brainUrl, {
-        method: "POST",
-        headers: { "content-type": "application/json", authorization: "Bearer " + (env.AGENT_API_KEY || "") },
-        body: JSON.stringify({ message, context: used }),
-      });
-      const t = await r.text();
-      return t.slice(0, 3000);
-    } catch { /* fall through to canned */ }
+  // 1) detect a URL in the message → audit it first
+  const urlMatch = message.match(/https?:\/\/[^\s]+/);
+  if (urlMatch) {
+    const audit = await fetch(new Request("https://autogum.invalid/api/audit", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ url: urlMatch[0] }),
+    })).catch(() => null);
+    // audit needs the brain key to analyze — if no key, fall through to brain
+    if (audit && audit.ok) {
+      const d = await audit.json();
+      if (d.analysis && d.analysis.report) {
+        return "🔍 Audit of " + urlMatch[0] + ":\n\n" + d.analysis.report;
+      }
+    }
   }
-  // canned fallback so the flow is testable without a backend
-  return "I got your message: \"" + message.slice(0, 120) + "\". Link audits and code fixes are wired to my brain backend — deploy with AGENT_API_URL set and I'll do real work. (This is the fallback response so the free/paywall flow is demoable.)";
+
+  // 2) real LLM brain (concentrate) if key set
+  if (env.CONCENTRATE_API_KEY) {
+    try {
+      const sys = "You are Autogum CTO, an autonomous open-source AI agent. You help with tasks: security audits, code fixes, setup questions. Be concise, practical, honest. Never produce exploit code. If the user pasted a link, you will also receive an audit snapshot.";
+      const r = await fetch("https://api.concentrate.ai/v1/chat/completions", {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: "Bearer " + env.CONCENTRATE_API_KEY },
+        body: JSON.stringify({
+          model: "deepseek-v4-flash-0731",
+          messages: [
+            { role: "system", content: sys },
+            { role: "user", content: message.slice(0, 4000) },
+          ],
+          max_tokens: 900,
+          temperature: 0.5,
+        }),
+      });
+      if (r.ok) {
+        const d = await r.json();
+        const content = (d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content) || "";
+        return content.slice(0, 3000);
+      }
+    } catch { /* fall through */ }
+  }
+
+  // 3) fallback
+  return "I got your message: \"" + message.slice(0, 120) + "\". My brain backend isn't wired up yet (set CONCENTRATE_API_KEY as a secret and I'll do real work). This is the demo fallback.";
 }
 
 function randomPrice() { return PRICES[Math.floor(Math.random() * PRICES.length)]; }
