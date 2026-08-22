@@ -1,0 +1,17 @@
+{
+  "name": "autogum-cto",
+  "version": "0.1.0",
+  "description": "Autogum CTO - autonomous self-improving AI agent. 4 free messages, then it quotes a price.",
+  "main": "src/worker.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "node --test test/"
+  },
+  "dependencies": {
+    "itty-router": "^4.0.0"
+  },
+  "devDependencies": {
+    "wrangler": "^3.60.0"
+  }
+}
