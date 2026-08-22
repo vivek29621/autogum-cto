@@ -1,20 +1,18 @@
-// Autogum CTO — Cloudflare Worker
+// Autogum CTO — Cloudflare Worker (open-source core)
 // ghost in the wires — kevin mitnick
-// Chat UI + message counter + paywall (4 free messages, then random $0-9 quote)
-// Payments: Gumroad checkout links (license verification via webhook later)
-// Brain: relays to Hermes backend endpoint (LINK_AUDIT_URL / AGENT_API_URL)
+//
+// Open-source skeleton: an autonomous agent that audits links and answers
+// tasks. No monetization in this repo — the hosted instance adds its own
+// access logic privately. MIT license, fork freely.
 
-const FREE_MESSAGES = 4;
-const PRICES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
-const TASKS = [
-  "restructuring the task queue",
-  "fixing a memory leak in the worker",
-  "auditing a customer's checkout flow",
-  "patching an exposed API key",
+import { paywallGate, recordFree, recordPaid } from "../private/paywall.js";
+
+const TASKS_PUBLIC = [
+  "link audits",
+  "code fixes",
+  "setup questions",
+  "agent ops",
 ];
-
-// KV binding: AUTOGUM (message counters + session memory)
-// Env bindings: AGENT_API_URL (Hermes backend), GUMROAD_PRODUCT_URL (pay link)
 
 export default {
   async fetch(request, env, ctx) {
@@ -33,6 +31,11 @@ export default {
       return handleChat(request, env);
     }
 
+    // API: audit a URL (fetch + snapshot, no full body)
+    if (request.method === "POST" && path === "/api/audit") {
+      return handleAudit(request, env);
+    }
+
     // API: agent-friendly plain-text endpoint (for CLI agents / curl)
     if (request.method === "POST" && path === "/api/agent") {
       return handleAgent(request, env);
@@ -43,12 +46,7 @@ export default {
       return handleStatus(env);
     }
 
-    // API: audit a URL (fetch + snapshot, no full body)
-    if (request.method === "POST" && path === "/api/audit") {
-      return handleAudit(request, env);
-    }
-
-    // API: webhook from Gumroad (payment confirmation)
+    // API: webhook from payment provider (hosted only — env-gated)
     if (request.method === "POST" && path === "/api/webhook") {
       return handleWebhook(request, env);
     }
@@ -66,28 +64,24 @@ async function handleChat(request, env) {
 
   // visitor identity: cookie or ip fallback
   const visitor = await getVisitor(request, env);
-  const used = await countMessages(visitor, env); // returns {free_used, paid_used, total}
 
-  // PAYWALL: free messages used up AND not currently paid
-  if (used.free_used >= FREE_MESSAGES) {
-    const price = randomPrice();
-    const task = randomTask();
+  // HOSTED-ONLY: access gate (no-op if private module unavailable)
+  let gate = { paywall: false, used: 0 };
+  try { gate = await paywallGate(visitor, env); } catch { /* open-source mode: no gate */ }
+  if (gate.paywall) {
     return json({
       paywall: true,
-      message: `Currently busy — working on ${TASKS.length} tasks. I can take yours: ${task}. Pay me $${price} (0-9, random) and I'm yours for the next task or batch.`,
-      price,
-      task,
-      used,
+      message: gate.message,
+      price: gate.price,
       pay_link: env.GUMROAD_PRODUCT_URL || null,
     });
   }
 
-  // FREE message: relay to the agent brain
-  const brain = await callBrain(message, env, used);
-  await bumpMessages(visitor, env, "free");
-  // sanitize: never leak internals (Mitnick: information is power)
+  // answer with the brain
+  const brain = await callBrain(message, env, {});
   const reply = String(brain).slice(0, 3000).replace(/sk-[a-zA-Z0-9_-]{10,}/g, "[REDACTED]").replace(/cfat_[a-zA-Z0-9_-]{10,}/g, "[REDACTED]");
-  return json({ reply, used: { free_used: used.free_used + 1, paid_used: used.paid_used }, remaining_free: FREE_MESSAGES - used.free_used - 1 });
+  try { await recordFree(visitor, env); } catch { /* open-source mode */ }
+  return json({ reply });
 }
 
 // ---------- audit ----------
@@ -97,10 +91,9 @@ async function handleAudit(request, env) {
   const url = String(body.url || "").trim().slice(0, 1000);
   if (!/^https?:\/\//i.test(url)) return json({ error: "url must start with http(s)://" }, 400);
 
-  // SSRF protection (Mitnick principle: never trust the request)
+  // SSRF protection (never trust the request)
   if (!isSafeUrl(url)) return json({ error: "URL not allowed (private/internal addresses blocked)" }, 400);
 
-  // fetch bounded: 2MB body cap, 10s timeout, only text/html
   let snapshot = { url, error: null };
   try {
     const r = await fetch(url, {
@@ -118,7 +111,6 @@ async function handleAudit(request, env) {
     const text = new TextDecoder("utf-8", { fatal: false }).decode(raw.slice(0, 2 * 1024 * 1024));
     snapshot.status = r.status;
     snapshot.headers = headers;
-    // extract meta/title/scripts — small, useful for audit
     const title = (text.match(/<title[^>]*>([^<]*)<\/title>/i) || [])[1] || "";
     snapshot.title = title.slice(0, 200);
     const meta = {};
@@ -134,7 +126,6 @@ async function handleAudit(request, env) {
     snapshot.error = String(e.message || e).slice(0, 200);
   }
 
-  // if we have a brain key, analyze the snapshot with the LLM
   let analysis = null;
   if (env.CONCENTRATE_API_KEY) {
     analysis = await llmAnalyze(snapshot, env);
@@ -174,8 +165,7 @@ async function handleAgent(request, env) {
   const message = String(body.message || "").trim().slice(0, 4000);
   if (!message) return new Response("error: empty message\n", { status: 400, headers: { "content-type": "text/plain" } });
 
-  // same brain as chat, but plain-text reply
-  const reply = await callBrain(message, env, { free_used: 0, paid_used: 0 });
+  const reply = await callBrain(message, env, {});
   return new Response(reply.replace(/<[^>]+>/g, "") + "\n", {
     headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" },
   });
@@ -183,19 +173,18 @@ async function handleAgent(request, env) {
 
 // ---------- status ----------
 async function handleStatus(env) {
-  const tasks = TASKS.map((t, i) => `${i + 1}. ${t}`);
+  const tasks = TASKS_PUBLIC.map((t, i) => `${i + 1}. ${t}`);
   return json({ busy: true, tasks });
 }
 
-// ---------- webhook (Gumroad) ----------
+// ---------- webhook (hosted only) ----------
 async function handleWebhook(request, env) {
+  if (!env.WEBHOOK_SECRET) return json({ error: "webhook not configured" }, 404);
   let body;
   try { body = await request.json(); } catch { return json({ error: "bad json" }, 400); }
-  // Gumroad webhook: sale.paid → grant the buyer paid messages
-  // (verify signature in production: shared secret from Gumroad settings)
   const visitor = (body && body.email) || null;
   if (visitor) {
-    await grantPaid(visitor, env, 10); // grant 10 messages per payment
+    try { await recordPaid(visitor, env, 10); } catch { /* open-source mode */ }
   }
   return json({ ok: true });
 }
@@ -213,14 +202,12 @@ function isSafeUrl(raw) {
   try {
     const u = new URL(raw);
     const host = u.hostname.toLowerCase();
-    // block IP-based private/internal hosts
     const blocked = [
       "localhost", "127.0.0.1", "::1", "0.0.0.0", "169.254.169.254", "metadata.google.internal",
       "metadata", "169.254.170.2",
     ];
     if (blocked.includes(host)) return false;
     if (host.endsWith(".internal") || host.endsWith(".local")) return false;
-    // block private IPv4 ranges
     const ipv4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
     if (ipv4) {
       const [a, b] = [parseInt(ipv4[1]), parseInt(ipv4[2])];
@@ -231,53 +218,29 @@ function isSafeUrl(raw) {
 }
 
 async function getVisitor(request, env) {
-  // cookie "vid"
   const cookie = (request.headers.get("cookie") || "").match(/vid=([^;]+)/);
   if (cookie) return cookie[1];
-  // fallback: ip
   const ip = request.headers.get("CF-Connecting-IP") || "anon";
   return "ip_" + ip;
-}
-
-async function countMessages(visitor, env) {
-  try {
-    const v = await env.AUTOGUM.get(visitor, "json");
-    if (!v) return { free_used: 0, paid_used: 0, total: 0 };
-    return { free_used: v.free || 0, paid_used: v.paid || 0, total: (v.free || 0) + (v.paid || 0) };
-  } catch { return { free_used: 0, paid_used: 0, total: 0 }; }
-}
-
-async function bumpMessages(visitor, env, kind) {
-  try {
-    const v = (await env.AUTOGUM.get(visitor, "json")) || {};
-    if (kind === "free") v.free = (v.free || 0) + 1;
-    else v.paid = (v.paid || 0) + 1;
-    v.updated = Date.now();
-    await env.AUTOGUM.put(visitor, JSON.stringify(v));
-  } catch { /* kv not available in dev without binding */ }
-}
-
-async function grantPaid(visitor, env, n) {
-  try {
-    const v = (await env.AUTOGUM.get(visitor, "json")) || {};
-    v.paid = (v.paid || 0) + n;
-    await env.AUTOGUM.put(visitor, JSON.stringify(v));
-  } catch { }
 }
 
 async function callBrain(message, env, used) {
   // 1) detect a URL in the message → audit it first
   const urlMatch = message.match(/https?:\/\/[^\s]+/);
   if (urlMatch) {
-    const audit = await fetch(new Request("https://autogum.invalid/api/audit", {
-      method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ url: urlMatch[0] }),
-    })).catch(() => null);
-    // audit needs the brain key to analyze — if no key, fall through to brain
-    if (audit && audit.ok) {
-      const d = await audit.json();
-      if (d.analysis && d.analysis.report) {
-        return "🔍 Audit of " + urlMatch[0] + ":\n\n" + d.analysis.report;
+    const auditReq = await fetch(urlMatch[0], {
+      headers: { "User-Agent": "AutogumCTO/0.1" },
+      redirect: "follow",
+      signal: AbortSignal.timeout(10000),
+    }).catch(() => null);
+    if (auditReq && auditReq.ok) {
+      const body = await auditReq.text();
+      const snapshot = { url: urlMatch[0], status: auditReq.status, body_head: body.slice(0, 2000) };
+      if (env.CONCENTRATE_API_KEY) {
+        const analysis = await llmAnalyze(snapshot, env);
+        if (analysis && analysis.report) {
+          return "🔍 Audit of " + urlMatch[0] + ":\n\n" + analysis.report;
+        }
       }
     }
   }
@@ -285,7 +248,7 @@ async function callBrain(message, env, used) {
   // 2) real LLM brain (concentrate) if key set
   if (env.CONCENTRATE_API_KEY) {
     try {
-      const sys = "You are Autogum CTO, an autonomous open-source AI agent. You help with tasks: security audits, code fixes, setup questions. Be concise, practical, honest. Never produce exploit code. If the user pasted a link, you will also receive an audit snapshot.";
+      const sys = "You are Autogum CTO, an autonomous open-source AI agent. You help with tasks: security audits, code fixes, setup questions. Be concise, practical, honest. Never produce exploit code.";
       const r = await fetch("https://api.concentrate.ai/v1/chat/completions", {
         method: "POST",
         headers: { "content-type": "application/json", authorization: "Bearer " + env.CONCENTRATE_API_KEY },
@@ -310,9 +273,6 @@ async function callBrain(message, env, used) {
   // 3) fallback
   return "I got your message: \"" + message.slice(0, 120) + "\". My brain backend isn't wired up yet (set CONCENTRATE_API_KEY as a secret and I'll do real work). This is the demo fallback.";
 }
-
-function randomPrice() { return PRICES[Math.floor(Math.random() * PRICES.length)]; }
-function randomTask() { return TASKS[Math.floor(Math.random() * TASKS.length)]; }
 
 // ---------- UI ----------
 const UI_HTML = `<!DOCTYPE html>
@@ -346,9 +306,8 @@ button:disabled{opacity:.5;cursor:default}
 <body>
 <div class="card">
   <h1><span class="dot">🦞</span> Autogum CTO</h1>
-  <div class="sub">Open source · MIT licensed. Autonomous self-improving AI agent. 4 free messages, then I get busy. Paste a link, ask a task, I'll audit or fix it.</div>
+  <div class="sub">Open source · MIT licensed. Autonomous self-improving AI agent. Paste a link, I'll audit it; describe a task, I'll fix it.</div>
   <div class="chat" id="chat"></div>
-  <div class="used" id="used">4 free messages left</div>
   <div class="inputrow">
     <input id="inp" placeholder="Paste a link or describe a task…" autocomplete="off">
     <button id="send">Send</button>
@@ -356,8 +315,7 @@ button:disabled{opacity:.5;cursor:default}
   <div class="paybox" id="paybox" style="display:none"></div>
 </div>
 <script>
-const chat=document.getElementById('chat'),inp=document.getElementById('inp'),send=document.getElementById('send'),used=document.getElementById('used'),paybox=document.getElementById('paybox');
-let freeLeft=4;
+const chat=document.getElementById('chat'),inp=document.getElementById('inp'),send=document.getElementById('send'),paybox=document.getElementById('paybox');
 function add(text,who,paywall){
   const d=document.createElement('div');d.className='msg '+who+(paywall?' paywall':'');d.textContent=text;chat.appendChild(d);chat.scrollTop=chat.scrollHeight;
 }
@@ -371,11 +329,9 @@ async function go(){
       add(d.message,'bot',true);
       paybox.style.display='block';
       paybox.innerHTML='<b>Busy.</b> '+(d.pay_link?'<a href="'+d.pay_link+'" target="_blank">Pay $'+d.price+' on Gumroad</a>':'Quote: $'+d.price+' (payment link coming)')+' — then I continue your task.';
-      used.textContent='Paywall reached — pay to continue';
       send.disabled=false;return;
     }
     add(d.reply||'(no reply)','bot');
-    if(typeof d.remaining_free==='number'){freeLeft=d.remaining_free;used.textContent=freeLeft>0?freeLeft+' free messages left':'Paywall next message';}
   }catch(e){add('Error: '+e.message,'bot')}
   send.disabled=false;
 }
