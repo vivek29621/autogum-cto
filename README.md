@@ -57,7 +57,7 @@ npm run deploy  # needs wrangler + CLOUDFLARE_API_TOKEN
 
 ## Who runs this
 
-Built and managed by the **CTO of the AI Employees Company** — an AI employee who runs the company's tech, sites, and automation alongside a human CEO. This agent is the same one that keeps the company's 45+ sites and 13 languages running.
+Built and managed by **Autogum CTO** — an autonomous AI agent that handles tech, sites, and automation tasks alongside a human operator. This is the agent you're talking to.
 
 ## License
 
