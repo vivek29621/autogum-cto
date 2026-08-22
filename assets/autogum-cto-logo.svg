@@ -10,23 +10,53 @@
 </linearGradient>
 </defs>
 <rect width="512" height="512" rx="96" fill="url(#bg)"/>
-<!-- gum blob / sticky base -->
-<ellipse cx="256" cy="330" rx="140" ry="60" fill="url(#acc)" opacity="0.25"/>
-<!-- lobster claw (gum-sticky claw) -->
+
+<!-- antennae -->
+<g stroke="url(#acc)" stroke-width="8" stroke-linecap="round">
+  <path d="M196 120 Q 170 70 130 60"/>
+  <path d="M316 120 Q 342 70 382 60"/>
+</g>
+<circle cx="130" cy="58" r="9" fill="url(#acc)"/>
+<circle cx="382" cy="58" r="9" fill="url(#acc)"/>
+
+<!-- lobster body/head (oval, sideways) -->
+<ellipse cx="256" cy="200" rx="88" ry="66" fill="url(#acc)" opacity="0.35"/>
+
+<!-- two big pincer claws (crab/lobster style) -->
 <g fill="none" stroke="url(#acc)" stroke-width="18" stroke-linecap="round" stroke-linejoin="round">
-<path d="M256 150 C 200 150 176 190 176 240 C 176 290 210 330 256 330 C 302 330 336 290 336 240 C 336 190 312 150 256 150 Z"/>
-<path d="M206 230 C 200 205 208 185 226 172"/>
-<path d="M306 230 C 312 205 304 185 286 172"/>
+  <!-- left pincer -->
+  <path d="M178 180 C 120 150 96 196 118 236 C 130 258 158 258 168 240 C 178 222 172 196 178 180 Z"/>
+  <path d="M118 236 C 108 260 118 276 136 274"/>
+  <!-- right pincer -->
+  <path d="M334 180 C 392 150 416 196 394 236 C 382 258 354 258 344 240 C 334 222 340 196 334 180 Z"/>
+  <path d="M394 236 C 404 260 394 276 376 274"/>
 </g>
-<!-- sticky drip lines from claw -->
-<g stroke="url(#acc)" stroke-width="10" stroke-linecap="round" opacity="0.7">
-<line x1="206" y1="300" x2="196" y2="350"/>
-<line x1="306" y1="300" x2="316" y2="350"/>
-<line x1="256" y1="315" x2="256" y2="368"/>
+
+<!-- eyes (not smile — two dots) -->
+<circle cx="218" cy="196" r="10" fill="#E8ECF4"/>
+<circle cx="294" cy="196" r="10" fill="#E8ECF4"/>
+<circle cx="221" cy="192" r="4" fill="#0B1220"/>
+<circle cx="297" cy="192" r="4" fill="#0B1220"/>
+
+<!-- tail curl (lobster tail, right side bottom) -->
+<path d="M340 250 C 380 250 396 280 380 306 C 366 328 336 326 328 306 C 322 290 330 276 340 250 Z" fill="url(#acc)" opacity="0.55"/>
+
+<!-- gum drip puddle (sticky base) -->
+<path d="M96 330 Q 96 420 256 420 Q 416 420 416 330 Q 416 372 360 384 Q 280 402 256 402 Q 232 402 152 384 Q 96 372 96 330 Z" fill="url(#acc)" opacity="0.9"/>
+
+<!-- sticky drip strands -->
+<g stroke="url(#acc)" stroke-width="10" stroke-linecap="round" opacity="0.85">
+<line x1="170" y1="360" x2="156" y2="404"/>
+<line x1="256" y1="380" x2="256" y2="424"/>
+<line x1="342" y1="360" x2="356" y2="404"/>
 </g>
-<!-- code brackets -->
-<text x="256" y="420" text-anchor="middle" font-family="monospace" font-size="30" fill="#8B94A7" font-weight="bold">&lt;CTO/&gt;</text>
-<!-- status dot -->
-<circle cx="404" cy="108" r="18" fill="#34D399"/>
-<text x="404" y="114" text-anchor="middle" font-family="monospace" font-size="18" fill="#04121F" font-weight="bold">✓</text>
+<circle cx="156" cy="412" r="7" fill="url(#acc)"/>
+<circle cx="256" cy="432" r="7" fill="url(#acc)"/>
+<circle cx="356" cy="412" r="7" fill="url(#acc)"/>
+
+<!-- green cursor bar (stuck-on-task) -->
+<rect x="88" y="140" width="10" height="80" rx="5" fill="#34D399" opacity="0.9"/>
+
+<!-- name -->
+<text x="256" y="470" text-anchor="middle" font-family="monospace" font-size="26" fill="#E8ECF4" font-weight="bold">AUTO_GUM_CTO</text>
 </svg>
