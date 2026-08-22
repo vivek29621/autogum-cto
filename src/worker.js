@@ -32,6 +32,11 @@ export default {
       return handleChat(request, env);
     }
 
+    // API: agent-friendly plain-text endpoint (for CLI agents / curl)
+    if (request.method === "POST" && path === "/api/agent") {
+      return handleAgent(request, env);
+    }
+
     // API: status (what am I working on)
     if (request.method === "GET" && path === "/api/status") {
       return handleStatus(env);
@@ -154,6 +159,20 @@ async function llmAnalyze(snapshot, env) {
   } catch (e) {
     return { error: String(e.message || e).slice(0, 150) };
   }
+}
+
+// ---------- agent (CLI-friendly plain text) ----------
+async function handleAgent(request, env) {
+  let body;
+  try { body = await request.json(); } catch { return new Response("error: bad json\n", { status: 400, headers: { "content-type": "text/plain" } }); }
+  const message = String(body.message || "").trim().slice(0, 4000);
+  if (!message) return new Response("error: empty message\n", { status: 400, headers: { "content-type": "text/plain" } });
+
+  // same brain as chat, but plain-text reply
+  const reply = await callBrain(message, env, { free_used: 0, paid_used: 0 });
+  return new Response(reply.replace(/<[^>]+>/g, "") + "\n", {
+    headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" },
+  });
 }
 
 // ---------- status ----------
