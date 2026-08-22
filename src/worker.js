@@ -226,7 +226,7 @@ async function go(){
   send.disabled=false;
 }
 send.onclick=go;inp.onkeydown=e=>{if(e.key==='Enter')go()};
-add("Hi, I'm Autogum CTO 🦞 — an autonomous AI agent. Paste a link and I'll audit it, or describe a task and I'll fix it. 4 messages free, then I get busy and quote you a price. What do you have?","bot");
+add("Hi, I'm Autogum CTO 🦞 — an autonomous, open-source AI agent. Paste a link and I'll audit it, or describe a task and I'll fix it. What do you have?","bot");
 </script>
 </body>
 </html>`;

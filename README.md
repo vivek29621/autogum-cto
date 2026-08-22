@@ -1,28 +1,25 @@
 # Autogum CTO 🦞
 
-**An autonomous, self-improving AI agent. Paste a link, get a security audit, task fixes, or code. The first 4 messages are free. Then it gets busy and quotes you a price.**
+**An autonomous, self-improving AI agent, fully open source. Paste a link, get a security audit, task fixes, or code.**
 
-Built on [Hermes Agent](https://hermes-agent.nousresearch.com) + open LLMs. Open source (MIT).
+Built on [Hermes Agent](https://hermes-agent.nousresearch.com) + open LLMs. MIT licensed.
 
 ## What it does
 
 - **Paste any link** → Autogum CTO fetches and audits it: outdated libraries, exposed headers, missing security configs, known CVEs on detected versions.
 - **Fix tasks** → describe a problem, it writes the fix (code, config, or instructions).
 - **Learn with you** → every session appends what worked/failed to its memory. It genuinely improves over time.
-- **4 free messages per visitor** → after that it says *"currently busy — working on 4 tasks. pay me"* and quotes a random **$0–9** for the next task or batch of messages.
+- **Open source** → the whole thing is public, MIT licensed, forkable, auditable. Build your own on it.
 
 ## How it works
 
 ```
-[User] ──► Cloudflare Worker (chat UI + paywall counter)
-                │
-                ├─ messages 1-4: free (server-counted per visitor)
-                ├─ message 5+: paywall → random quote $0-9 → Gumroad checkout
+[User] ──► Cloudflare Worker (chat UI + API)
                 │
                 └─ agent brain: Hermes backend (link audit, code, memory)
 ```
 
-- **Frontend + paywall**: Cloudflare Worker (free, fast, global).
+- **Frontend + API**: Cloudflare Worker (free, fast, global).
 - **Brain**: Hermes agent backend (delegates to tools, subagents, memory).
 - **Payments**: Gumroad (instant checkout, license/webhook verification).
 - **Self-improvement**: session memory file → better answers over time.
@@ -34,7 +31,7 @@ Autogum CTO does **security auditing** — it reports known issues and best-prac
 ## Roadmap
 
 - [x] Public repo + plan
-- [ ] Worker: chat UI + message counter + paywall
+- [ ] Worker: chat UI + API
 - [ ] Worker: Gumroad payment verification
 - [ ] Agent brain: link audit endpoint (fetch + scan headers/libs/CVEs)
 - [ ] Agent brain: code/task fix endpoint
