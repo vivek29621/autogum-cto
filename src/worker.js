@@ -8,6 +8,10 @@
 // To run: set CONCENTRATE_API_KEY (or any OpenAI-compatible key) and deploy
 // to Cloudflare Workers, or run locally with `wrangler dev`.
 
+// ---------- logo (embedded 128px PNG, base64) ----------
+const LOGO_B64 = "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";
+const LOGO_PNG = Uint8Array.from(atob(LOGO_B64), c => c.charCodeAt(0));
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -21,6 +25,13 @@ export default {
     if (request.method === "GET" && (path === "/" || path === "/index.html")) {
       return new Response(LANDING_HTML, {
         headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
+      });
+    }
+
+    // logo image
+    if (request.method === "GET" && path === "/logo.png") {
+      return new Response(LOGO_PNG, {
+        headers: { "content-type": "image/png", "cache-control": "public, max-age=86400" },
       });
     }
 
@@ -344,7 +355,8 @@ body{background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSys
 .main{flex:1;min-width:0;display:flex;flex-direction:column}
 header{display:flex;height:60px;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);padding:0 20px}
 .brand{display:flex;align-items:center;gap:10px}
-.brand .logo{width:32px;height:32px;border-radius:10px;background:var(--grad);display:flex;align-items:center;justify-content:center;font-size:16px}
+.brand .logo{width:32px;height:32px;border-radius:10px;background:var(--grad);display:flex;align-items:center;justify-content:center;font-size:16px;overflow:hidden}
+.brand .logo img{width:100%;height:100%;object-fit:cover}
 .brandname{font-weight:700;font-size:16px;letter-spacing:-0.01em}
 .badge{font-size:10px;font-weight:600;color:var(--accent);border:1px solid var(--accent);border-radius:999px;padding:2px 8px;letter-spacing:0.06em;text-transform:uppercase}
 .headright{display:flex;align-items:center;gap:8px;color:var(--dim);font-size:13px}
@@ -425,7 +437,7 @@ textarea::placeholder{color:var(--dim)}
   </aside>
   <div class="main">
     <header>
-      <div class="brand"><span class="logo">🦞</span><span class="brandname">Autogum CTO</span><span class="badge">Open source</span></div>
+      <div class="brand"><span class="logo"><img src="/logo.png" alt="Autogum CTO"></span><span class="brandname">Autogum CTO</span><span class="badge">Open source</span></div>
       <div class="headright">
         <span class="status"><span class="dot"></span> Systems ready</span>
         <button class="iconbtn" id="toggle" title="Toggle theme">🌙</button>
@@ -434,7 +446,7 @@ textarea::placeholder{color:var(--dim)}
     <div class="chathead"><div><h2>New conversation</h2><p>Conversations stay in your browser</p></div></div>
     <div class="chat" id="chat">
       <div class="empty" id="empty">
-        <div class="heroicon">🦞</div>
+        <div class="heroicon"><img src="/logo.png" alt="Autogum CTO" style="width:100%;height:100%;object-fit:cover;border-radius:22px"></div>
         <h1>Autogum CTO sticks to tasks.</h1>
         <p class="sub">The open-source security agent that doesn't unstick until it finishes. Ask a security question, review code, or check a link.</p>
         <div class="examples">
@@ -495,7 +507,7 @@ function loadConv(i){
   convs[i].msgs.forEach(m=>{
     const d=document.createElement('div');
     if(m.who==='me'){d.className='msg me';d.textContent=m.text;}
-    else{d.className='msg bot';d.innerHTML='<div class="av">🦞</div><div class="body"></div>';d.querySelector('.body').textContent=m.text;}
+    else{d.className='msg bot';d.innerHTML='<div class="av"><img src="/logo.png" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:9px"></div><div class="body"></div>';d.querySelector('.body').textContent=m.text;}
     msgs.appendChild(d);
   });
   chat.scrollTop=chat.scrollHeight;
@@ -518,7 +530,7 @@ function add(text,who){
   empty.style.display='none';msgs.style.display='flex';
   const d=document.createElement('div');
   if(who==='me'){d.className='msg me';d.textContent=text;}
-  else{d.className='msg bot';d.innerHTML='<div class="av">🦞</div><div class="body"></div>';d.querySelector('.body').textContent=text;}
+  else{d.className='msg bot';d.innerHTML='<div class="av"><img src="/logo.png" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:9px"></div><div class="body"></div>';d.querySelector('.body').textContent=text;}
   msgs.appendChild(d);chat.scrollTop=chat.scrollHeight;
 }
 function saveMsg(userText,botText){

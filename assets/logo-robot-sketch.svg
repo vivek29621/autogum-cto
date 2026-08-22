@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- spherical robot head -->
+  <circle cx="128" cy="84" r="44" fill="#ffffff" stroke="#0a0b10" stroke-width="6"/>
+  <!-- visor with terminal prompt > -->
+  <rect x="98" y="70" width="60" height="28" rx="8" fill="#0a0b10"/>
+  <text x="112" y="90" font-family="monospace" font-size="18" font-weight="bold" fill="#22c55e">></text>
+  <!-- headphones (triangle marks) -->
+  <path d="M84 84 L70 96 L84 108 Z" fill="#0a0b10"/>
+  <path d="M172 84 L186 96 L172 108 Z" fill="#0a0b10"/>
+  <path d="M96 60 C96 40 160 40 160 60" stroke="#0a0b10" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <!-- body (segmented) -->
+  <rect x="104" y="140" width="48" height="40" rx="12" fill="#ffffff" stroke="#0a0b10" stroke-width="6"/>
+  <!-- triangle on chest -->
+  <path d="M128 152 L140 172 L116 172 Z" fill="#0a0b10"/>
+  <!-- arms -->
+  <path d="M100 150 L78 140 L70 128" stroke="#0a0b10" stroke-width="8" fill="none" stroke-linecap="round"/>
+  <path d="M156 150 L178 140 L186 128" stroke="#0a0b10" stroke-width="8" fill="none" stroke-linecap="round"/>
+  <!-- legs (walking pose) -->
+  <path d="M112 180 L104 214 L92 222" stroke="#0a0b10" stroke-width="8" fill="none" stroke-linecap="round"/>
+  <path d="M144 180 L154 210 L168 216" stroke="#0a0b10" stroke-width="8" fill="none" stroke-linecap="round"/>
+  <!-- glowing orb -->
+  <circle cx="186" cy="96" r="16" fill="#22c55e" opacity="0.35"/>
+  <circle cx="186" cy="96" r="10" fill="#22c55e"/>
+  <path d="M186 72 L186 64 M186 120 L186 128 M158 96 L150 96 M214 96 L222 96" stroke="#22c55e" stroke-width="4" stroke-linecap="round"/>
+</svg>

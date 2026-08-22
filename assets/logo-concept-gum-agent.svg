@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#7c3aed"/>
+      <stop offset="100%" stop-color="#06b6d4"/>
+    </linearGradient>
+  </defs>
+  <!-- gum-drop body (rounded blob, gum stretch feel) -->
+  <path d="M128 30 C96 30 74 52 74 84 C74 116 96 138 120 160 C124 164 132 164 136 160 C160 138 182 116 182 84 C182 52 160 30 128 30 Z" fill="url(#g)"/>
+  <!-- lens eye (scanning) -->
+  <circle cx="128" cy="86" r="26" fill="#ffffff"/>
+  <circle cx="128" cy="86" r="13" fill="#0a0b10"/>
+  <circle cx="121" cy="79" r="5" fill="#ffffff"/>
+  <!-- gum drip tail -->
+  <path d="M128 160 C124 176 122 190 126 204 C130 214 138 214 142 204 C146 190 144 176 140 160 Z" fill="#06b6d4" opacity="0.9"/>
+  <!-- headphone ear (right) -->
+  <rect x="196" y="74" width="22" height="40" rx="11" fill="#7c3aed"/>
+  <path d="M182 84 C182 66 196 60 208 62" stroke="#7c3aed" stroke-width="10" stroke-linecap="round" fill="none"/>
+</svg>
