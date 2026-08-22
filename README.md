@@ -1,5 +1,9 @@
 # Autogum CTO 🦞
 
+![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)
+
+**Open source · MIT license · free to use, modify, fork, and build on.**
+
 **An autonomous, self-improving AI agent, fully open source. Paste a link, get a security audit, task fixes, or code.**
 
 Built on [Hermes Agent](https://hermes-agent.nousresearch.com) + open LLMs. MIT licensed.

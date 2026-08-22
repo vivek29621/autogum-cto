@@ -1,5 +1,9 @@
-# AUTOGUM-CTO — Autonomous Self-Improving AI Agent (Product Plan)
+# AUTOGUM-CTO
+
+> **Open source (MIT license).** All code public, free to use, fork, and modify. — Autonomous Self-Improving AI Agent (Product Plan)
 CEO idea 2026-08-21 · built by EMP-1 (CTO) · open-source, self-improving, paywalled
+
+> **Open source (MIT license).** All code public, free to use, fork, and modify.
 
 ## THE PRODUCT (one line)
 Talk to an AI CTO that learns with you, fixes things, finds vulnerabilities, writes code, handles your company — 4 free messages, then it quotes a random $0-9 price to continue.

@@ -192,7 +192,7 @@ button:disabled{opacity:.5;cursor:default}
 <body>
 <div class="card">
   <h1><span class="dot">🦞</span> Autogum CTO</h1>
-  <div class="sub">Autonomous self-improving AI agent. 4 free messages, then I get busy. Paste a link, ask a task, I'll audit or fix it.</div>
+  <div class="sub">Open source · MIT licensed. Autonomous self-improving AI agent. 4 free messages, then I get busy. Paste a link, ask a task, I'll audit or fix it.</div>
   <div class="chat" id="chat"></div>
   <div class="used" id="used">4 free messages left</div>
   <div class="inputrow">
