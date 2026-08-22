@@ -361,6 +361,23 @@ h1{font-size:30px;font-weight:700;letter-spacing:-0.02em;text-align:center;backg
 .sub{color:var(--dim);font-size:14px;max-width:520px;text-align:center;margin-top:12px;line-height:1.65}
 .examples{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;max-width:660px;width:100%;margin-top:28px}
 @media(max-width:640px){.examples{grid-template-columns:1fr}}
+/* responsive: mobile-first — hide sidebar, add hamburger, stack */
+.mobilebar{display:none}
+@media(max-width:768px){
+  .sidebar{position:fixed;left:0;top:0;bottom:0;z-index:50;width:240px;transform:translateX(-100%);transition:transform .2s;box-shadow:2px 0 12px rgba(0,0,0,.1)}
+  .sidebar.open{transform:translateX(0)}
+  .mobilebar{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--panel)}
+  .hamburger{background:none;border:1px solid var(--border);border-radius:8px;width:34px;height:34px;cursor:pointer;font-size:15px;color:var(--txt)}
+  .mobilebar .logo{width:26px;height:26px;border-radius:8px;background:var(--grad);display:flex;align-items:center;justify-content:center;font-size:13px}
+  .mobilebar .mname{font-size:14px;font-weight:700}
+  .mobilebar .mspacer{flex:1}
+  .mobilebar .toggle{background:none;border:1px solid var(--border);border-radius:8px;width:34px;height:34px;cursor:pointer;font-size:15px;color:var(--txt)}
+  .chathead{padding:10px 14px}
+  .chat{padding:20px 12px}
+  .msg.me{max-width:92%}
+  .msg.bot{max-width:95%}
+  .foot{font-size:10.5px}
+}
 .example{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:16px;text-align:left;cursor:pointer;transition:border-color .15s,transform .15s}
 .example:hover{border-color:var(--accent2);transform:translateY(-2px)}
 .example .ico{font-size:20px;margin-bottom:14px}
@@ -389,6 +406,12 @@ textarea::placeholder{color:var(--dim)}
 </head>
 <body>
 <div class="app">
+  <div class="mobilebar">
+    <button class="hamburger" id="hamburger" title="Menu">☰</button>
+    <span class="logo">🦞</span><span class="mname">Autogum CTO</span>
+    <span class="mspacer"></span>
+    <button class="toggle" id="mobtoggle" title="Toggle theme">🌙</button>
+  </div>
   <aside class="sidebar" id="sidebar">
     <button class="newchat" id="newchat">✚ New conversation</button>
     <nav class="nav" aria-label="Main navigation">
@@ -438,7 +461,11 @@ textarea::placeholder{color:var(--dim)}
 <script>
 const chat=document.getElementById('chat'),msgs=document.getElementById('msgs'),empty=document.getElementById('empty'),
   inp=document.getElementById('inp'),send=document.getElementById('send'),toggle=document.getElementById('toggle'),
+  mobtoggle=document.getElementById('mobtoggle'),hamburger=document.getElementById('hamburger'),sidebar=document.getElementById('sidebar'),
   newchat=document.getElementById('newchat'),convlist=document.getElementById('convlist');
+// --- mobile: hamburger toggles sidebar ---
+hamburger.onclick=()=>sidebar.classList.toggle('open');
+document.addEventListener('click',e=>{if(window.innerWidth<=768&&sidebar.classList.contains('open')&&!sidebar.contains(e.target)&&!hamburger.contains(e.target))sidebar.classList.remove('open');});
 // --- nav items ---
 document.querySelectorAll('.navitem').forEach(n=>n.onclick=()=>{
   document.querySelectorAll('.navitem').forEach(x=>x.classList.remove('active'));
@@ -481,8 +508,11 @@ newchat.onclick=newChat;
 renderConvs();
 // --- theme ---
 const saved=localStorage.getItem('theme');
-if(saved==='dark')document.documentElement.setAttribute('data-theme','dark'),toggle.textContent='☀️';
-toggle.onclick=()=>{const d=document.documentElement;const dark=d.getAttribute('data-theme')==='dark';d.setAttribute('data-theme',dark?'':'dark');localStorage.setItem('theme',dark?'':'dark');toggle.textContent=dark?'🌙':'☀️'};
+function applyTheme(dark){document.documentElement.setAttribute('data-theme',dark?'dark':'');toggle.textContent=dark?'☀️':'🌙';if(mobtoggle)mobtoggle.textContent=dark?'☀️':'🌙';}
+if(saved==='dark')applyTheme(true);
+function themeClick(){const dark=document.documentElement.getAttribute('data-theme')==='dark';applyTheme(!dark);localStorage.setItem('theme',!dark?'dark':'');}
+toggle.onclick=themeClick;
+if(mobtoggle)mobtoggle.onclick=themeClick;
 // --- messages ---
 function add(text,who){
   empty.style.display='none';msgs.style.display='flex';
