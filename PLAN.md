@@ -42,7 +42,7 @@ Talk to an AI CTO that learns with you, fixes things, finds vulnerabilities, wri
 1. **A domain** (CEO said he'd get one) — e.g. autogum-cto.com or autogumcto.ai. If not, start on worker URL (free).
 2. **Cloudflare account access** (CEO said host on CF) — workers.dev is free; custom domain needs DNS.
 3. **Gumroad product for payments** — I create the "Autogum CTO access" product ($1-9 tiers or pay-what-you-want).
-4. **GitHub repo name** — `autogum-cto` under glinlabs (our token's account), public (open-source).
+4. **GitHub repo name** — `autogum-cto` (public, open-source).
 
 ## WHAT I BUILD (steps)
 1. Repo scaffold: README + LICENSE (MIT) + architecture docs.
