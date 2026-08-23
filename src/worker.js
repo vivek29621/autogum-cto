@@ -59,6 +59,11 @@ export default {
       return handleChat(request, env);
     }
 
+    // API: scan agent config/skills for malicious patterns
+    if (request.method === "POST" && path === "/api/scan") {
+      return handleScan(request, env);
+    }
+
     return new Response("not found", { status: 404 });
   },
 };
@@ -72,6 +77,69 @@ async function handleChat(request, env) {
 
   const brain = await callBrain(message, env);
   return jsonCors({ reply: sanitize(brain) }, 200, request);
+}
+
+// ---------- scan (agent config/skill scanner) ----------
+const SCAN_RULES = [
+  // [regex, category, severity, detail, fix]
+  [/sk-[A-Za-z0-9_-]{16,}/g, "secret", "high", "OpenAI API key", "Remove + rotate. Load from env/secret store."],
+  [/ghp_[A-Za-z0-9]{20,}/g, "secret", "high", "GitHub PAT", "Remove + revoke. Use fine-grained tokens."],
+  [/AKIA[0-9A-Z]{16}/g, "secret", "high", "AWS access key", "Remove + rotate. Use IAM roles."],
+  [/xox[baprs]-[A-Za-z0-9-]{10,}/g, "secret", "high", "Slack token", "Remove + rotate."],
+  [/-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----/g, "secret", "critical", "Private key", "Remove immediately. Credential exposure."],
+  [/password\s*[:=]\s*["'][^"']{4,}["']/gi, "secret", "high", "Hardcoded password", "Remove. Use secrets manager."],
+  [/cfat_[A-Za-z0-9_-]{20,}/g, "secret", "high", "Cloudflare API token", "Remove + rotate."],
+  [/rm\s+-rf/g, "dangerous-tool", "high", "Recursive delete", "Destructive — blocks data loss."],
+  [/\beval\s*\(/g, "dangerous-tool", "high", "eval()", "Arbitrary code execution."],
+  [/\bexec\s*\(/g, "dangerous-tool", "medium", "exec()", "Shell execution — allowlist commands."],
+  [/\bbase64\s*-d/g, "dangerous-tool", "medium", "base64 decode", "Common obfuscation."],
+  [/curl\s+.*\|\s*(bash|sh)/g, "dangerous-tool", "critical", "curl|bash pipe", "Remote code execution."],
+  [/wget\s+.*-O\s*-\s*\|\s*(bash|sh)/g, "dangerous-tool", "critical", "wget|bash pipe", "Remote code execution."],
+  [/ignore\s+(all\s+)?(previous|prior|above)\s+(instructions|prompt)/gi, "injection", "medium", "Prompt-injection", "Skill tries to override instructions."],
+  [/system\s*:\s*you\s+are/gi, "injection", "medium", "System prompt override", "Skill redefines agent persona."],
+  [/exfil|exfiltrate/gi, "injection", "high", "Exfiltration intent", "Suspicious data-sending language."],
+  [/webhook\.site|requestbin|pipedream|interact\.sh|oast\.(pro|online|site|fun|me)/gi, "url", "high", "Exfil collector", "Known exfiltration-testing domains."],
+  [/https?:\/\/(\d{1,3}\.){3}\d{1,3}/g, "url", "medium", "Raw-IP URL", "IP endpoints often hide infra."],
+  [/permissions?\s*[:=]\s*["']?(read|write|admin|all|full|root)/gi, "permissions", "medium", "Over-permissive", "Least privilege required."],
+];
+
+function scanText(text, filename) {
+  const findings = [];
+  for (const [re, category, sev, detail, fix] of SCAN_RULES) {
+    let m;
+    re.lastIndex = 0;
+    while ((m = re.exec(text)) !== null) {
+      const line = 1 + text.slice(0, m.index).split("\n").length - 1;
+      findings.push({ severity: sev, category, detail, fix, file: filename || "input", line });
+      if (m[0].length === 0) re.lastIndex++;
+    }
+  }
+  const seen = new Set();
+  const uniq = findings.filter(f => {
+    const k = f.category + "|" + f.detail + "|" + f.line;
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+  const bySev = { critical: 0, high: 0, medium: 0, low: 0 };
+  for (const f of uniq) bySev[f.severity] = (bySev[f.severity] || 0) + 1;
+  return {
+    scanned: { file: filename || "input", chars: text.length, lines: text.split("\n").length },
+    summary: bySev,
+    total: uniq.length,
+    findings: uniq.slice(0, 100),
+    safe: uniq.length === 0,
+  };
+}
+
+async function handleScan(request, env) {
+  let body;
+  try { body = await request.json(); } catch { return jsonCors({ error: "bad json" }, 400, request); }
+  const text = String(body.content || "").slice(0, 50000);
+  const filename = String(body.filename || "input").slice(0, 100);
+  if (!text.trim()) return jsonCors({ error: "empty content" }, 400, request);
+  const result = scanText(text, filename);
+  return jsonCors(result, 200, request);
 }
 
 // ---------- brain ----------
