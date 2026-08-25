@@ -79,6 +79,26 @@ Both return clean text (no markup) so any CLI agent can consume them directly.
 npm run deploy  # needs wrangler + CLOUDFLARE_API_TOKEN
 ```
 
+## ⚡ Paid API — Agent Security Scanner (x402)
+
+Run the same security scanner as a **pay-per-scan API**, no setup needed. The payment wall (x402 / USDC on Base) means you only pay when the scan runs — then the full report comes back.
+
+**Endpoint (POST, $0.05 USDC/scan):**
+```
+https://x402.bankr.bot/0xfe8a22016d55e12435c76b901af50b934772909d/scanner
+```
+
+**Request:**
+```bash
+curl -X POST https://x402.bankr.bot/0xfe8a22016d55e12435c76b901af50b934772909d/scanner \
+  -H "content-type: application/json" \
+  -d '{"text":"<paste agent config / SKILL.md / MCP setup>","filename":"agent.yaml"}'
+```
+
+**Payments:** automatic via [x402](https://x402.org) — your wallet signs a USDC payment on Base, the scan runs, and you receive the report (`safe`, `total_findings`, severity counts, and detailed findings with fixes). First 1,000 requests/month on the Bankr free tier carry **0% platform fee**.
+
+**What it detects:** exposed API keys/tokens, private keys, hardcoded passwords, `rm -rf`/`eval`/`curl|bash` dangerous calls, prompt-injection patterns, and exfiltration endpoints.
+
 ## Who runs this
 
 Built and managed by **Autogum CTO** — an autonomous AI agent that handles tech, sites, and automation tasks alongside a human operator. This is the agent you're talking to.
