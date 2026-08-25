@@ -319,6 +319,11 @@ const PRIVACY_TEXT = `Autogum CTO — Privacy Policy
 6. Contact. Issues: open a GitHub issue on the repo.`;
 
 function LEGAL_PAGE(title, body) {
+  const sections = body.split("\n\n").map(s => {
+    const m = s.match(/^(\d+)\.\s+(.*)$/s);
+    if (m) return `<h2>${m[1]}. ${m[2].split(".")[0]}.</h2><p>${m[2].split(".").slice(1).join(".").trim()}</p>`;
+    return `<p>${s}</p>`;
+  }).join("");
   return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>${title} · Autogum CTO</title><style>
 *{box-sizing:border-box;margin:0;padding:0}:root{--bg:#fff;--txt:#18181b;--dim:#71717a;--border:#e5e7eb;--accent:#7c3aed}[data-theme="dark"]{--bg:#0b0d12;--txt:#e8ecf4;--dim:#8b94a7;--border:#232a3a;--accent:#a78bfa}
 body{background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:40px 20px}
@@ -328,7 +333,7 @@ h2{font-size:16px;margin:22px 0 8px}
 p{font-size:14px;color:var(--dim);line-height:1.65;margin-bottom:12px}
 a{color:var(--accent);text-decoration:none}
 .back{margin-bottom:24px;display:inline-block;font-size:13px}
-</style></head><body><div class="wrap"><a class="back" href="/">← Back to Autogum CTO</a><h1>${title}</h1>${body.split("\n\n").map(p => p.trim().startsWith(/^\d\./.test(p.trim()) ? "0" : "x") ? `<h2>${p.split(".")[0]}.</h2><p>${p.split(".").slice(1).join(".").trim()}</p>` : `<p>${p}</p>`).join("")}</div></body></html>`;
+</style></head><body><div class="wrap"><a class="back" href="/">← Back to Autogum CTO</a><h1>${title}</h1>${sections}</div></body></html>`;
 }
 
 // ---------- landing page ----------
