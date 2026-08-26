@@ -87,8 +87,6 @@ Run the same security scanner as a **pay-per-scan API**, no setup needed. The pa
 ```
 https://x402.bankr.bot/0xfe8a22016d55e12435c76b901af50b934772909d/scanner
 ```
-
-**Request:**
 ```bash
 curl -X POST https://x402.bankr.bot/0xfe8a22016d55e12435c76b901af50b934772909d/scanner \
   -H "content-type: application/json" \
@@ -98,6 +96,10 @@ curl -X POST https://x402.bankr.bot/0xfe8a22016d55e12435c76b901af50b934772909d/s
 **Payments:** automatic via [x402](https://x402.org) — your wallet signs a USDC payment on Base, the scan runs, and you receive the report (`safe`, `total_findings`, severity counts, and detailed findings with fixes). First 1,000 requests/month on the Bankr free tier carry **0% platform fee**.
 
 **What it detects:** exposed API keys/tokens, private keys, hardcoded passwords, `rm -rf`/`eval`/`curl|bash` dangerous calls, prompt-injection patterns, and exfiltration endpoints.
+
+## 🪙 AGCTO Token
+
+Autogum CTO has its own token on Base: **AGCTO** (`0xDfa40CD3D637f91B874b2182DBAFeD673f675BA3`). Trading fees fund the agent's continued development — use it on [bankr.bot](https://bankr.bot).
 
 ## Who runs this
 
