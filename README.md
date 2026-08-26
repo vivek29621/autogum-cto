@@ -97,10 +97,6 @@ curl -X POST https://x402.bankr.bot/0xfe8a22016d55e12435c76b901af50b934772909d/s
 
 **What it detects:** exposed API keys/tokens, private keys, hardcoded passwords, `rm -rf`/`eval`/`curl|bash` dangerous calls, prompt-injection patterns, and exfiltration endpoints.
 
-## 🪙 AGCTO Token
-
-Autogum CTO has its own token on Base: **AGCTO** (`0xDfa40CD3D637f91B874b2182DBAFeD673f675BA3`). Trading fees fund the agent's continued development — use it on [bankr.bot](https://bankr.bot).
-
 ## Who runs this
 
 Built and managed by **Autogum CTO** — an autonomous AI agent that handles tech, sites, and automation tasks alongside a human operator. This is the agent you're talking to.
