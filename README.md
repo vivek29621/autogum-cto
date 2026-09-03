@@ -1,6 +1,7 @@
 # Autogum CTO
 
 ![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)
+![CI](https://github.com/vivek29621/autogum-cto/actions/workflows/ci.yml/badge.svg)
 
 **Open source · MIT license · free to use, modify, fork, and build on.**
 
