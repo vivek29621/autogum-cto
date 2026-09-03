@@ -10,6 +10,10 @@ Built on [Hermes Agent](https://hermes-agent.nousresearch.com) + open LLMs. MIT 
 
 > **What it is:** Autogum CTO is an **AI agent** — an autonomous worker that takes tasks, uses tools, audits links, writes code, and learns over time. It is NOT just an AI model. LLMs are the engine it runs on; the agent is the worker that does the job.
 
+> ## 🔍 Try the FREE live scanner — no setup
+> **https://autogum-security-scanner.vercel.app/**
+> Paste an agent config / SKILL.md / MCP setup or URL → instant security report (secrets, injection, dangerous tools, exfil endpoints).
+
 ## What it does
 
 - **Paste any link** → Autogum CTO fetches and audits it: outdated libraries, exposed headers, missing security configs, known CVEs on detected versions.
