@@ -42,12 +42,14 @@ Autogum CTO does **security auditing** — it reports known issues and best-prac
 ## Roadmap
 
 - [x] Public repo + plan
-- [ ] Worker: chat UI + API
-- [ ] Worker: Gumroad payment verification
-- [ ] Agent brain: link audit endpoint (fetch + scan headers/libs/CVEs)
-- [ ] Agent brain: code/task fix endpoint
-- [ ] Memory/self-improvement loop
-- [ ] Live deploy + custom domain
+- [x] Worker: chat UI + API (live at autogum-security-scanner.vercel.app)
+- [x] Agent brain: link audit endpoint (fetch + scan headers/libs/CVEs)
+- [x] Agent brain: code/task fix endpoint
+- [x] Pay-per-scan API (x402/USDC)
+- [x] Memory/self-improvement loop
+- [x] Live deploy + custom domain
+- [ ] Small business adoption packs + use-case guides
+- [ ] Enterprise "scan your whole agent fleet" mode
 
 ## Run locally
 
