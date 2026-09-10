@@ -2,6 +2,8 @@
 
 ![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)
 ![CI](https://github.com/vivek29621/autogum-cto/actions/workflows/ci.yml/badge.svg)
+![Contributing](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)
+[![Security](SECURITY.md)](https://github.com/vivek29621/autogum-cto/blob/main/SECURITY.md)
 
 **Open source · MIT license · free to use, modify, fork, and build on.**
 
@@ -42,14 +44,14 @@ Autogum CTO does **security auditing** — it reports known issues and best-prac
 ## Roadmap
 
 - [x] Public repo + plan
-- [x] Worker: chat UI + API (live at autogum-security-scanner.vercel.app)
+- [x] Worker: chat UI + API (live at the scanner URL)
+- [x] Worker: Gumroad payment verification
 - [x] Agent brain: link audit endpoint (fetch + scan headers/libs/CVEs)
 - [x] Agent brain: code/task fix endpoint
-- [x] Pay-per-scan API (x402/USDC)
 - [x] Memory/self-improvement loop
 - [x] Live deploy + custom domain
-- [ ] Small business adoption packs + use-case guides
-- [ ] Enterprise "scan your whole agent fleet" mode
+- [ ] Paid API usage dashboard / per-user quotas
+- [ ] Pluggable agent backends (local LLM, other providers)
 
 ## Run locally
 
