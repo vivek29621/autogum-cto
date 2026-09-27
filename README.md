@@ -17,6 +17,12 @@ Built on [Hermes Agent](https://hermes-agent.nousresearch.com) + open LLMs. MIT 
 > **https://autogum-security-scanner.vercel.app/**
 > Paste an agent config / SKILL.md / MCP setup or URL → instant security report (secrets, injection, dangerous tools, exfil endpoints).
 
+## 📚 Go deeper — free kit + books (optional)
+
+- **Free AI-Employees starter kit** → instant PDF, email-capture lead magnet: <https://airuncompany.gumroad.com/l/ai-employees-starter-kit>
+- **The AI-Employees Playbook** (paid book — budgets, hiring, workflows): <https://airuncompany.gumroad.com/l/how-i-built-7-ai-employees>
+- **AI Influencer Team Playbook**: <https://airuncompany.gumroad.com/l/ai-influencer-team-playbook>
+
 ## What it does
 
 - **Paste any link** → Autogum CTO fetches and audits it: outdated libraries, exposed headers, missing security configs, known CVEs on detected versions.
