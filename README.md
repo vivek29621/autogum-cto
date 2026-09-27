@@ -74,19 +74,19 @@ npm run dev    # wrangler dev — worker + UI at localhost:8787
 
 ```bash
 # ask anything
-curl -X POST https://YOUR-WORKER.workers.dev/api/agent \
+curl -X POST https://YOUR-WORKER.workers.dev/api/chat \
   -H "content-type: application/json" \
-  -H "Authorization: Bearer YOUR_AGENT_API_TOKEN" \
+  -H "Authorization: Bearer $AGENT_API_TOKEN" \
   -d '{"message":"check my site https://example.com"}'
 
-# audit a link directly
-curl -X POST https://YOUR-WORKER.workers.dev/api/audit \
+# scan an agent config / SKILL.md / MCP setup for secrets & dangerous calls
+curl -X POST https://YOUR-WORKER.workers.dev/api/scan \
   -H "content-type: application/json" \
-  -H "Authorization: Bearer YOUR_AGENT_API_TOKEN" \
-  -d '{"url":"https://example.com"}'
+  -H "Authorization: Bearer $AGENT_API_TOKEN" \
+  -d '{"content":"name: my-agent\napi_key: sk-ABC...","filename":"agent.yaml"}'
 ```
 
-Both return clean text (no markup) so any CLI agent can consume them directly.
+Both return plain text (no markup) so any CLI agent can consume them directly.
 
 ## Deploy
 
